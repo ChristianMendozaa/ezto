@@ -56,9 +56,11 @@ export default function LoginPage() {
                 required
               />
             </div>
-            <Button type="submit" className="w-full">
-              {t("auth.login.loginButton")}
-            </Button>
+            <Link href="/dashboard" className="w-full">
+              <Button type="submit" className="w-full">
+                {t("auth.login.loginButton")}
+              </Button>
+            </Link>
           </form>
         </CardContent>
         <CardFooter className="flex flex-col space-y-2">
