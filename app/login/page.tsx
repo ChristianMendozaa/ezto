@@ -56,6 +56,7 @@ export default function LoginPage() {
                 required
               />
             </div>
+            <br></br>
             <Link href="/dashboard" className="w-full">
               <Button type="submit" className="w-full">
                 {t("auth.login.loginButton")}
