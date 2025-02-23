@@ -6,7 +6,6 @@ import { CalendarDateRangePicker } from "@/components/date-range-picker"
 import { MainNav } from "@/components/main-nav"
 import { Overview } from "@/components/overview"
 import { RecentSales } from "@/components/recent-sales"
-import { Search } from "@/components/search"
 import { UserNav } from "@/components/user-nav"
 import { Users, CreditCard, Activity, DollarSign, Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -27,7 +26,6 @@ export default function DashboardPage() {
           <div className="ml-auto flex items-center space-x-4">
             <LanguageToggle />
             <ThemeToggle />
-            <Search />
             <UserNav />
           </div>
         </div>
