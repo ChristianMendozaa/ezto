@@ -47,6 +47,51 @@ export function MainNav({ className, ...props }: React.HTMLAttributes<HTMLElemen
         {t("payments.title")}
       </Link>
       <Link
+        href="/dashboard/promotions"
+        className={cn(
+          "text-sm font-medium transition-colors hover:text-orange-500",
+          pathname === "/dashboard/promotions" ? "text-orange-500" : "text-muted-foreground",
+        )}
+      >
+        {t("promotions.title")}
+      </Link>
+      <Link
+        href="/dashboard/access-control"
+        className={cn(
+          "text-sm font-medium transition-colors hover:text-orange-500",
+          pathname === "/dashboard/access-control" ? "text-orange-500" : "text-muted-foreground",
+        )}
+      >
+        {t("accessControl.title")}
+      </Link>
+      <Link
+        href="/dashboard/staff"
+        className={cn(
+          "text-sm font-medium transition-colors hover:text-orange-500",
+          pathname === "/dashboard/staff" ? "text-orange-500" : "text-muted-foreground",
+        )}
+      >
+        {t("staff.title")}
+      </Link>
+      <Link
+        href="/dashboard/store"
+        className={cn(
+          "text-sm font-medium transition-colors hover:text-orange-500",
+          pathname === "/dashboard/store" ? "text-orange-500" : "text-muted-foreground",
+        )}
+      >
+        {t("store.title")}
+      </Link>
+      <Link
+        href="/dashboard/gym-settings"
+        className={cn(
+          "text-sm font-medium transition-colors hover:text-orange-500",
+          pathname === "/dashboard/gym-settings" ? "text-orange-500" : "text-muted-foreground",
+        )}
+      >
+        {t("gymSettings.title")}
+      </Link>
+      <Link
         href="/dashboard/reports"
         className={cn(
           "text-sm font-medium transition-colors hover:text-orange-500",
