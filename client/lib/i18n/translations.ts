@@ -63,7 +63,7 @@ export const translations = {
       },
     },
     footer: {
-      copyright: "© 2024 GymFlow. All rights reserved.",
+      copyright: "© 2024 EzTo. All rights reserved.",
     },
     auth: {
       login: {
@@ -320,7 +320,7 @@ export const translations = {
         name: "John Smith",
         role: "Gym Owner",
         content:
-          "GymFlow has revolutionized how we manage our gym. The NFC technology for check-ins is a game-changer!",
+          "EzTo has revolutionized how we manage our gym. The NFC technology for check-ins is a game-changer!",
       },
       person2: {
         name: "Sarah Johnson",
@@ -330,7 +330,7 @@ export const translations = {
       person3: {
         name: "Mike Brown",
         role: "Gym Manager",
-        content: "The analytics provided by GymFlow have helped us make data-driven decisions to grow our business.",
+        content: "The analytics provided by EzTo have helped us make data-driven decisions to grow our business.",
       },
       person4: {
         name: "Emily Davis",
@@ -339,7 +339,7 @@ export const translations = {
       },
     },
     blog: {
-      title: "GymFlow Blog",
+      title: "EzTo Blog",
       readMore: "Read More",
       post1: {
         title: "5 Ways to Increase Gym Membership Retention",
@@ -744,7 +744,7 @@ export const translations = {
       },
     },
     footer: {
-      copyright: "© 2024 GymFlow. Todos los derechos reservados.",
+      copyright: "© 2024 EzTo. Todos los derechos reservados.",
     },
     auth: {
       login: {
@@ -1001,7 +1001,7 @@ export const translations = {
         name: "Juan Pérez",
         role: "Propietario de Gimnasio",
         content:
-          "GymFlow ha revolucionado la forma en que gestionamos nuestro gimnasio. ¡La tecnología NFC para los check-ins es un cambio de juego!",
+          "EzTo ha revolucionado la forma en que gestionamos nuestro gimnasio. ¡La tecnología NFC para los check-ins es un cambio de juego!",
       },
       person2: {
         name: "María García",
@@ -1013,7 +1013,7 @@ export const translations = {
         name: "Carlos Rodríguez",
         role: "Gerente de Gimnasio",
         content:
-          "Los análisis proporcionados por GymFlow nos han ayudado a tomar decisiones basadas en datos para hacer crecer nuestro negocio.",
+          "Los análisis proporcionados por EzTo nos han ayudado a tomar decisiones basadas en datos para hacer crecer nuestro negocio.",
       },
       person4: {
         name: "Ana Martínez",
@@ -1023,7 +1023,7 @@ export const translations = {
       },
     },
     blog: {
-      title: "Blog de GymFlow",
+      title: "Blog de EzTo",
       readMore: "Leer Más",
       post1: {
         title: "5 Formas de Aumentar la Retención de Miembros del Gimnasio",

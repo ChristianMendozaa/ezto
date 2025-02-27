@@ -57,7 +57,7 @@ export function ClientSidebar() {
     <Sidebar collapsible="icon">
       <SidebarHeader>
         <div className="flex items-center justify-between h-16 px-4 border-b border-gray-200 dark:border-gray-700">
-          <img className="w-auto h-8" src="/logo.svg" alt="GymFlow" />
+          <img className="w-auto h-8" src="/logo.svg" alt="EzTo" />
           <SidebarTrigger />
         </div>
       </SidebarHeader>

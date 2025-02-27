@@ -36,7 +36,7 @@ export default function LoginPage() {
         <div className="container flex h-16 items-center justify-between">
           <div className="flex items-center gap-2">
             <Dumbbell className="h-6 w-6 text-orange-500" />
-            <span className="text-xl font-bold">GymFlow</span>
+            <span className="text-xl font-bold">EzTo</span>
           </div>
           <nav className="hidden md:flex gap-6">
             <Link href="/#features" className="text-sm font-medium hover:text-orange-500">
@@ -86,9 +86,11 @@ export default function LoginPage() {
                   required
                 />
               </div>
-              <Button type="submit" className="w-full">
-                {t("auth.login.loginButton")}
-              </Button>
+              <Link href="/dashboard">
+                <Button type="submit" className="w-full">
+                  {t("auth.login.loginButton")}
+                </Button>
+              </Link>
             </form>
           </CardContent>
           <CardFooter className="flex flex-col space-y-2">

@@ -36,7 +36,7 @@ export default function RegisterPage() {
         <div className="container flex h-16 items-center justify-between">
           <div className="flex items-center gap-2">
             <Dumbbell className="h-6 w-6 text-orange-500" />
-            <span className="text-xl font-bold">GymFlow</span>
+            <span className="text-xl font-bold">EzTo</span>
           </div>
           <nav className="hidden md:flex gap-6">
             <Link href="/#features" className="text-sm font-medium hover:text-orange-500">
