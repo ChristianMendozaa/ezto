@@ -374,7 +374,7 @@ export default function LandingPage() {
         <div className="container flex flex-col md:flex-row justify-between items-center gap-4 px-4 md:px-6">
           <div className="flex items-center gap-2">
             <Dumbbell className="h-6 w-6 text-orange-500" />
-            <span className="text-xl font-bold text-white">GymFlow</span>
+            <span className="text-xl font-bold text-white">EzTo</span>
           </div>
           <p className="text-sm text-gray-400">{t("footer.copyright")}</p>
         </div>
