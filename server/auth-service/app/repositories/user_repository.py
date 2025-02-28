@@ -2,6 +2,7 @@ from firebase_admin import auth
 from app.utils.firebase_config import db
 from app.models.user_model import UserRegister
 import asyncio
+from datetime import date
 
 class UserRepository:
 
@@ -20,6 +21,12 @@ class UserRepository:
             user_data = user.dict()
             user_data["uid"] = user_record.uid
             user_data["gym_logo_base64"] = logo_base64
+            
+            # Convertir las fechas a cadenas en formato ISO-8601 (YYYY-MM-DD)
+            if "member_info" in user_data and user_data["member_info"] is not None:
+                birth_date = user_data["member_info"].get("birth_date")
+                if isinstance(birth_date, date):
+                    user_data["member_info"]["birth_date"] = birth_date.isoformat()
             
             # Guardar en Firestore de manera asíncrona
             loop = asyncio.get_running_loop()

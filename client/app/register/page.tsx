@@ -28,11 +28,83 @@ export default function RegisterPage() {
   const [userType, setUserType] = useState<"gym_owner" | "gym_member" | null>(null)
   const [date, setDate] = useState<Date>()
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // Handle form submission logic here
-    console.log("Form submitted")
-    router.push("/dashboard")
+
+    const formData = new FormData()
+
+    // Recoger los valores de los campos por ID (campos generales)
+    formData.append("full_name", (document.getElementById("fullName") as HTMLInputElement)?.value || "")
+    formData.append("email", (document.getElementById("email") as HTMLInputElement)?.value || "")
+    formData.append("password", (document.getElementById("password") as HTMLInputElement)?.value || "")
+    formData.append("confirm_password", (document.getElementById("confirmPassword") as HTMLInputElement)?.value || "")
+    formData.append("phone", (document.getElementById("phone") as HTMLInputElement)?.value || "")
+
+    // Usar el estado local `userType` para obtener el valor del tipo de usuario
+    if (userType) {
+      formData.append("user_type", userType)
+    } else {
+      console.error("Tipo de usuario no seleccionado")
+      alert("Por favor selecciona el tipo de usuario (Dueño de gimnasio o Miembro de gimnasio)")
+      return
+    }
+
+    // Capturar los campos de Member Info solo si el tipo de usuario es "gym_member"
+    if (userType === "gym_member") {
+      formData.append("gym_id", (document.getElementById("selectGym") as HTMLInputElement)?.value || "")
+      formData.append("membership_number", (document.getElementById("membershipNumber") as HTMLInputElement)?.value || "")
+      formData.append("gender", (document.getElementById("gender") as HTMLInputElement)?.value || "")
+
+      // Capturar y formatear la fecha de nacimiento (birth_date)
+      if (date) {
+        const formattedDate = date.toISOString().split("T")[0] // Formato YYYY-MM-DD
+        formData.append("birth_date", formattedDate)
+      } else {
+        console.warn("Fecha de nacimiento no proporcionada")
+        formData.append("birth_date", "")
+      }
+
+      // Capturar los objetivos de entrenamiento y preferencias de actividades (checkboxes)
+      const trainingGoals = Array.from(document.querySelectorAll('input[name="training_goals"]:checked')).map((el) => (el as HTMLInputElement).value)
+      formData.append("training_goals", trainingGoals.join(",") || "")
+
+      const activityPreferences = Array.from(document.querySelectorAll('input[name="activity_preferences"]:checked')).map((el) => (el as HTMLInputElement).value)
+      formData.append("activity_preferences", activityPreferences.join(",") || "")
+    }
+
+    // Imprimir FormData para depuración
+    for (const [key, value] of formData.entries()) {
+      console.log(`${key}: ${value}`);
+    }
+
+    try {
+      const response = await fetch("http://localhost:8000/auth/register", {
+        method: "POST",
+        body: formData,
+        headers: {
+          "Accept": "application/json",
+        },
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        console.error("Datos de error recibidos:", errorData)
+        if (Array.isArray(errorData.detail)) {
+          const formattedErrors = errorData.detail
+            .map((err: any) => `${err.loc.join(".")}: ${err.msg}`)
+            .join("\n")
+          throw new Error(formattedErrors)
+        }
+        throw new Error(errorData.detail || "Error en el registro")
+      }
+
+      const data = await response.json()
+      console.log("Usuario registrado:", data)
+      router.push("/login")
+    } catch (error: any) {
+      console.error("Error al registrar usuario:", error.message)
+      alert(error.message)
+    }
   }
 
   return (
