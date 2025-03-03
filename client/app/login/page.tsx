@@ -13,22 +13,62 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { ThemeToggle } from "@/components/theme-toggle"
 import { LanguageToggle } from "@/components/language-toggle"
 import { Dumbbell } from "lucide-react"
+import { auth } from "@/lib/firebaseConfig";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { useAuth } from "@/lib/auth-context"; // 🔥 Importamos el AuthContext
 
 export default function LoginPage() {
   const { t } = useLanguage()
   const router = useRouter()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [loading, setLoading] = useState(false);
+  const { setUser } = useAuth(); // 🔥 Usamos AuthContext para actualizar el usuario
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    console.log("Login attempt", { email, password })
-    if (email.includes("admin")) {
-      router.push("/dashboard")
-    } else {
-      router.push("/client")
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!email || !password) {
+      alert("Por favor, completa todos los campos.");
+      return;
     }
-  }
+
+    setLoading(true);
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const token = await userCredential.user.getIdToken();
+
+      const response = await fetch(process.env.NEXT_PUBLIC_BACKEND_URL + "/auth/login", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error("Error en la autenticación. Revisa tu usuario o contraseña.");
+      }
+
+      const data = await response.json();
+
+      // 🔥 Actualizar el estado global del usuario
+      setUser(data);
+
+      // 🔄 Redirigir según el rol
+      if (data.role === "gym_owner") {
+        router.replace("/dashboard");
+      } else {
+        router.replace("/client");
+      }
+
+    } catch (error: any) {
+      alert(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-100 dark:bg-gray-900">
@@ -86,11 +126,9 @@ export default function LoginPage() {
                   required
                 />
               </div>
-              <Link href="/dashboard">
-                <Button type="submit" className="w-full">
-                  {t("auth.login.loginButton")}
-                </Button>
-              </Link>
+              <Button type="submit" className="w-full">
+                {t("auth.login.loginButton")}
+              </Button>
             </form>
           </CardContent>
           <CardFooter className="flex flex-col space-y-2">

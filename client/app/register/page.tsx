@@ -27,85 +27,118 @@ export default function RegisterPage() {
   const router = useRouter()
   const [userType, setUserType] = useState<"gym_owner" | "gym_member" | null>(null)
   const [date, setDate] = useState<Date>()
+  const [gymId, setGymId] = useState<string | null>(null);
+  const [gender, setGender] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
 
-    const formData = new FormData()
+    const formData = new FormData();
 
-    // Recoger los valores de los campos por ID (campos generales)
-    formData.append("full_name", (document.getElementById("fullName") as HTMLInputElement)?.value || "")
-    formData.append("email", (document.getElementById("email") as HTMLInputElement)?.value || "")
-    formData.append("password", (document.getElementById("password") as HTMLInputElement)?.value || "")
-    formData.append("confirm_password", (document.getElementById("confirmPassword") as HTMLInputElement)?.value || "")
-    formData.append("phone", (document.getElementById("phone") as HTMLInputElement)?.value || "")
+    // 📌 Capturar campos obligatorios
+    formData.append("full_name", (document.getElementById("fullName") as HTMLInputElement)?.value.trim() || "");
+    formData.append("email", (document.getElementById("email") as HTMLInputElement)?.value.trim() || "");
+    formData.append("password", (document.getElementById("password") as HTMLInputElement)?.value.trim() || "");
+    formData.append("confirm_password", (document.getElementById("confirmPassword") as HTMLInputElement)?.value.trim() || "");
+    formData.append("phone", (document.getElementById("phone") as HTMLInputElement)?.value.trim() || "");
+    formData.append("user_type", userType || "");
 
-    // Usar el estado local `userType` para obtener el valor del tipo de usuario
-    if (userType) {
-      formData.append("user_type", userType)
-    } else {
-      console.error("Tipo de usuario no seleccionado")
-      alert("Por favor selecciona el tipo de usuario (Dueño de gimnasio o Miembro de gimnasio)")
-      return
+    if (!userType) {
+      alert("Por favor selecciona el tipo de usuario (Dueño de gimnasio o Miembro de gimnasio)");
+      return;
     }
 
-    // Capturar los campos de Member Info solo si el tipo de usuario es "gym_member"
-    if (userType === "gym_member") {
-      formData.append("gym_id", (document.getElementById("selectGym") as HTMLInputElement)?.value || "")
-      formData.append("membership_number", (document.getElementById("membershipNumber") as HTMLInputElement)?.value || "")
-      formData.append("gender", (document.getElementById("gender") as HTMLInputElement)?.value || "")
+    // 📌 Capturar datos del Dueño de Gimnasio
+    if (userType === "gym_owner") {
+      formData.append("gym_name", (document.getElementById("gymName") as HTMLInputElement)?.value.trim() || "");
+      formData.append("gym_address", (document.getElementById("gymAddress") as HTMLInputElement)?.value.trim() || "");
+      formData.append("gym_phone", (document.getElementById("gymPhone") as HTMLInputElement)?.value.trim() || "");
+      formData.append("opening_hours", (document.getElementById("gymHours") as HTMLInputElement)?.value.trim() || "");
 
-      // Capturar y formatear la fecha de nacimiento (birth_date)
+      // ✅ Capturar correctamente los servicios ofrecidos
+      const selectedServices = Array.from(document.querySelectorAll('input[name="gym_services"]:checked'))
+        .map((el) => (el as HTMLInputElement).value);
+
+      formData.append("services_offered", selectedServices.length > 0 ? selectedServices.join(",") : "");
+
+      formData.append("capacity", (document.getElementById("gymCapacity") as HTMLInputElement)?.value.trim() || "0");
+      formData.append("social_media", (document.getElementById("gymSocial") as HTMLInputElement)?.value.trim() || "");
+
+      // Manejo de imagen (logo del gimnasio)
+      const gymLogoInput = document.getElementById("gymLogo") as HTMLInputElement;
+      if (gymLogoInput.files && gymLogoInput.files.length > 0) {
+        formData.append("gym_logo", gymLogoInput.files[0]);
+      }
+    }
+
+    // 📌 Capturar datos del Miembro de Gimnasio
+    if (userType === "gym_member") {
+      if (!gymId) {
+        alert("Por favor selecciona un gimnasio válido.");
+        return;
+      }
+      formData.append("gym_id", gymId);
+
+      formData.append("membership_number", (document.getElementById("membershipNumber") as HTMLInputElement)?.value.trim() || "");
+
+      // ✅ Capturar correctamente el `gender`
+      if (!gender) {
+        alert("Por favor selecciona un género.");
+        return;
+      }
+      formData.append("gender", gender);
+
       if (date) {
-        const formattedDate = date.toISOString().split("T")[0] // Formato YYYY-MM-DD
-        formData.append("birth_date", formattedDate)
-      } else {
-        console.warn("Fecha de nacimiento no proporcionada")
-        formData.append("birth_date", "")
+        formData.append("birth_date", date.toISOString().split("T")[0]); // Formato YYYY-MM-DD
       }
 
-      // Capturar los objetivos de entrenamiento y preferencias de actividades (checkboxes)
-      const trainingGoals = Array.from(document.querySelectorAll('input[name="training_goals"]:checked')).map((el) => (el as HTMLInputElement).value)
-      formData.append("training_goals", trainingGoals.join(",") || "")
+      // ✅ Capturar `training_goals` correctamente
+      const trainingGoals = ["loseWeight", "gainMuscle", "improveHealth"]
+        .filter(goal => (document.getElementById(`goal-${goal}`) as HTMLInputElement)?.checked)
+        .join(",");
+      formData.append("training_goals", trainingGoals || "");
 
-      const activityPreferences = Array.from(document.querySelectorAll('input[name="activity_preferences"]:checked')).map((el) => (el as HTMLInputElement).value)
-      formData.append("activity_preferences", activityPreferences.join(",") || "")
+      // ✅ Capturar `activity_preferences` correctamente
+      const activityPreferences = ["groupClasses", "weights", "cardio", "yoga"]
+        .filter(activity => (document.getElementById(`activity-${activity}`) as HTMLInputElement)?.checked)
+        .join(",");
+      formData.append("activity_preferences", activityPreferences || "");
     }
 
-    // Imprimir FormData para depuración
+    // 📌 Verificar que los datos están bien formateados antes de enviarlos
     for (const [key, value] of formData.entries()) {
       console.log(`${key}: ${value}`);
     }
 
     try {
-      const response = await fetch("http://localhost:8000/auth/register", {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/register`, {
         method: "POST",
-        body: formData,
+        body: formData, // 🔥 Enviar como multipart/form-data
         headers: {
           "Accept": "application/json",
         },
-      })
+      });
 
       if (!response.ok) {
-        const errorData = await response.json()
-        console.error("Datos de error recibidos:", errorData)
+        const errorData = await response.json();
+        console.error("Datos de error recibidos:", errorData);
         if (Array.isArray(errorData.detail)) {
           const formattedErrors = errorData.detail
             .map((err: any) => `${err.loc.join(".")}: ${err.msg}`)
-            .join("\n")
-          throw new Error(formattedErrors)
+            .join("\n");
+          throw new Error(formattedErrors);
         }
-        throw new Error(errorData.detail || "Error en el registro")
+        throw new Error(errorData.detail || "Error en el registro");
       }
 
-      const data = await response.json()
-      console.log("Usuario registrado:", data)
-      router.push("/login")
+      const data = await response.json();
+      console.log("Usuario registrado:", data);
+      router.push("/login");
     } catch (error: any) {
-      console.error("Error al registrar usuario:", error.message)
-      alert(error.message)
+      console.error("Error al registrar usuario:", error.message);
+      alert(error.message);
     }
-  }
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-100 dark:bg-gray-900">
@@ -210,11 +243,12 @@ export default function RegisterPage() {
                       <div className="grid grid-cols-2 gap-2">
                         {["weights", "cardio", "groupClasses", "personalTraining"].map((service) => (
                           <div key={service} className="flex items-center space-x-2">
-                            <Checkbox id={service} />
+                            <Checkbox id={service} name="gym_services" value={service} />
                             <Label htmlFor={service}>{t(`auth.register.services.${service}`)}</Label>
                           </div>
                         ))}
                       </div>
+
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="gymCapacity">{t("auth.register.gymCapacity")}</Label>
@@ -238,7 +272,7 @@ export default function RegisterPage() {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="selectGym">{t("auth.register.selectGym")}</Label>
-                      <Select>
+                      <Select onValueChange={(value) => setGymId(value)}>
                         <SelectTrigger id="selectGym">
                           <SelectValue placeholder={t("auth.register.selectGymPlaceholder")} />
                         </SelectTrigger>
@@ -248,6 +282,7 @@ export default function RegisterPage() {
                           <SelectItem value="gym3">Gym 3</SelectItem>
                         </SelectContent>
                       </Select>
+
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="membershipNumber">{t("auth.register.membershipNumber")}</Label>
@@ -275,7 +310,7 @@ export default function RegisterPage() {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="gender">{t("auth.register.gender")}</Label>
-                      <Select>
+                      <Select onValueChange={(value) => setGender(value)}>
                         <SelectTrigger id="gender">
                           <SelectValue placeholder={t("auth.register.selectGender")} />
                         </SelectTrigger>
@@ -285,25 +320,27 @@ export default function RegisterPage() {
                           <SelectItem value="other">{t("auth.register.genderOther")}</SelectItem>
                         </SelectContent>
                       </Select>
+
                     </div>
                     <div className="space-y-2 col-span-2">
                       <Label>{t("auth.register.trainingGoals")}</Label>
                       <div className="grid grid-cols-2 gap-2">
                         {["loseWeight", "gainMuscle", "improveHealth"].map((goal) => (
                           <div key={goal} className="flex items-center space-x-2">
-                            <Checkbox id={goal} />
-                            <Label htmlFor={goal}>{t(`auth.register.goals.${goal}`)}</Label>
+                            <Checkbox id={`goal-${goal}`} value={goal} /> {/* ✅ Asignar id único */}
+                            <Label htmlFor={`goal-${goal}`}>{t(`auth.register.goals.${goal}`)}</Label>
                           </div>
                         ))}
                       </div>
                     </div>
+
                     <div className="space-y-2 col-span-2">
                       <Label>{t("auth.register.activityPreferences")}</Label>
                       <div className="grid grid-cols-2 gap-2">
                         {["groupClasses", "weights", "cardio", "yoga"].map((activity) => (
                           <div key={activity} className="flex items-center space-x-2">
-                            <Checkbox id={activity} />
-                            <Label htmlFor={activity}>{t(`auth.register.activities.${activity}`)}</Label>
+                            <Checkbox id={`activity-${activity}`} value={activity} /> {/* ✅ Asignar id único */}
+                            <Label htmlFor={`activity-${activity}`}>{t(`auth.register.activities.${activity}`)}</Label>
                           </div>
                         ))}
                       </div>
