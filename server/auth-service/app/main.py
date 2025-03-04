@@ -35,12 +35,10 @@ app = FastAPI(
 # Configuración de CORS para permitir el acceso desde el frontend autorizado
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "*",
-    ],
+    allow_origins=["http://localhost:3000"],  # Especificar el origen del frontend
     allow_credentials=True,
-    allow_methods=["POST", "GET", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "Accept"],
+    allow_methods=["*"],  # Permitir todos los métodos
+    allow_headers=["*"],  # Permitir todos los headers
 )
 
 # Middleware de Rate Limiting
@@ -80,7 +78,7 @@ async def security_headers(request: Request, call_next):
 # Middleware para restringir hosts permitidos
 app.add_middleware(
     TrustedHostMiddleware,
-    allowed_hosts=["eztoplatform.com", "localhost", "*.eztoplatform.com"],
+    allowed_hosts=["*"],
 )
 
 # Inclusión de routers con prefijos y tags

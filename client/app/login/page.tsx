@@ -35,6 +35,12 @@ export default function LoginPage() {
 
     setLoading(true);
     try {
+      // 🔥 1. Borrar cualquier cookie de sesión previa antes de autenticarse
+      await fetch(process.env.NEXT_PUBLIC_BACKEND_URL + "/auth/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const token = await userCredential.user.getIdToken();
 
