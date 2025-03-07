@@ -19,8 +19,14 @@ class AuthService:
 
     @staticmethod
     async def verify_token(token: str):
-        try:
-            decoded_token = auth.verify_id_token(token, check_revoked=True)
+            try:
+                decoded_token = auth.verify_id_token(token)
+                print(f"Decoded token: {decoded_token}")
+            except ValueError as e:
+                print(f"Error de validación del token: {str(e)}")
+            except Exception as e:
+                print(f"Error inesperado en verify_id_token: {str(e)}")
+                raise HTTPException(status_code=401, detail="Error en autenticación")
 
             user_id = decoded_token["uid"]
             user_doc = db.collection("users").document(user_id).get()
@@ -37,5 +43,3 @@ class AuthService:
                 "role": user_type
             }
 
-        except Exception as e:
-            raise HTTPException(status_code=401, detail=f"Error en autenticación: {str(e)}")

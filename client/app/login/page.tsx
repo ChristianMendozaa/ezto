@@ -35,6 +35,7 @@ export default function LoginPage() {
 
     setLoading(true);
     try {
+
       // 🔥 1. Borrar cualquier cookie de sesión previa antes de autenticarse
       await fetch(process.env.NEXT_PUBLIC_BACKEND_URL + "/auth/logout", {
         method: "POST",
@@ -42,7 +43,23 @@ export default function LoginPage() {
       });
 
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const token = await userCredential.user.getIdToken();
+      console.log(userCredential);
+      const token = await userCredential.user.getIdToken(true);
+      console.log(token)
+      console.log(Math.floor(Date.now() / 1000)); // Muestra la hora en segundos desde UNIX epoch
+      if (auth.currentUser) {
+        auth.currentUser.getIdTokenResult()
+          .then((idTokenResult) => {
+            console.log("Hora de emisión del token (iat):", idTokenResult.claims.iat);
+            console.log("Hora actual en el cliente:", Math.floor(Date.now() / 1000));
+          })
+          .catch((error) => {
+            console.error("Error obteniendo el token:", error);
+          });
+      } else {
+        console.error("No hay usuario autenticado.");
+      }
+
 
       const response = await fetch(process.env.NEXT_PUBLIC_BACKEND_URL + "/auth/login", {
         method: "POST",
@@ -153,4 +170,3 @@ export default function LoginPage() {
     </div>
   )
 }
-
