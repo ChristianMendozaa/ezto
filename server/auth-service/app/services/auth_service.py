@@ -42,4 +42,3 @@ class AuthService:
                 "email": decoded_token.get("email", ""),
                 "role": user_type
             }
-
