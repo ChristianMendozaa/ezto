@@ -4,10 +4,7 @@ import { useState, useEffect } from "react";
 import { useLanguage } from "@/lib/hooks/use-language";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-<<<<<<< HEAD
 import { Badge } from "@/components/ui/badge"
-=======
->>>>>>> afb75bf933e10a27a8164a48c8899b5b816ddf92
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, MoreHorizontal, Trash2 } from "lucide-react";
 import {
@@ -25,7 +22,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-<<<<<<< HEAD
 
 interface Member {
   id: string;
@@ -46,24 +42,10 @@ export default function MembersPage() {
   const [successMessage, setSuccessMessage] = useState("");
 
   const getAuthToken = () => localStorage.getItem("token") || "";
-=======
-
-export default function MembersPage() {
-  const { t } = useLanguage();
-  const [members, setMembers] = useState([]);
-  const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
-  const [newMember, setNewMember] = useState({ name: "", email: "" });
-
-  // Obtener el token desde localStorage (o usar cookies si es necesario)
-  const getAuthToken = () => {
-    return localStorage.getItem("token") || "";
-  };
->>>>>>> afb75bf933e10a27a8164a48c8899b5b816ddf92
 
   useEffect(() => {
     const fetchMembers = async () => {
       try {
-<<<<<<< HEAD
         setLoading(true);
         const response = await fetch("http://localhost:8005/members", {
           method: "GET",
@@ -132,63 +114,11 @@ export default function MembersPage() {
   };
 
   const handleDeleteMember = async (id: string) => {
-=======
-        const response = await fetch("http://localhost:8005/members", {
-          method: "GET",
-          headers: {
-            "Authorization": `Bearer ${getAuthToken()}`,
-            "Content-Type": "application/json",
-          },
-          credentials: "include", // Si el backend usa cookies para autenticación
-        });
-
-        if (!response.ok) {
-          throw new Error("Error en la autenticación o petición");
-        }
-
-        const data = await response.json();
-        setMembers(Array.isArray(data) ? data : []); // Evita `map is not a function`
-      } catch (error) {
-        console.error("Error fetching members:", error);
-      }
-    };
-
-    fetchMembers();
-  }, []);
-
-  const handleAddMember = async () => {
-    try {
-      const response = await fetch("http://localhost:8005/members", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${getAuthToken()}`,
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify(newMember),
-      });
-
-      if (!response.ok) throw new Error("Error al agregar miembro");
-
-      const newEntry = await response.json();
-      setMembers([...members, newEntry]);
-      setIsAddMemberOpen(false);
-    } catch (error) {
-      console.error("Error adding member:", error);
-    }
-  };
-
-  const handleDeleteMember = async (id) => {
->>>>>>> afb75bf933e10a27a8164a48c8899b5b816ddf92
     try {
       const response = await fetch(`http://localhost:8005/members/${id}`, {
         method: "DELETE",
         headers: {
-<<<<<<< HEAD
           Authorization: `Bearer ${getAuthToken()}`,
-=======
-          "Authorization": `Bearer ${getAuthToken()}`,
->>>>>>> afb75bf933e10a27a8164a48c8899b5b816ddf92
           "Content-Type": "application/json",
         },
         credentials: "include",
@@ -196,17 +126,11 @@ export default function MembersPage() {
 
       if (!response.ok) throw new Error("Error al eliminar miembro");
 
-<<<<<<< HEAD
       setMembers((prevMembers) => prevMembers.filter((member) => member.id !== id));
       setSuccessMessage("Miembro eliminado exitosamente.");
     } catch (error) {
       console.error("Error deleting member:", error);
       setErrorMessage("Hubo un error al eliminar el miembro.");
-=======
-      setMembers(members.filter((member) => member.id !== id));
-    } catch (error) {
-      console.error("Error deleting member:", error);
->>>>>>> afb75bf933e10a27a8164a48c8899b5b816ddf92
     }
   };
 
@@ -220,14 +144,10 @@ export default function MembersPage() {
         </Button>
       </div>
 
-<<<<<<< HEAD
       {errorMessage && <p className="text-red-500">{errorMessage}</p>}
       {successMessage && <p className="text-green-500">{successMessage}</p>}
       {loading && <p className="text-center text-gray-500">Cargando miembros...</p>}
 
-=======
-      {/* Modal para agregar miembro */}
->>>>>>> afb75bf933e10a27a8164a48c8899b5b816ddf92
       <Dialog open={isAddMemberOpen} onOpenChange={setIsAddMemberOpen}>
         <DialogContent>
           <DialogHeader>
@@ -247,22 +167,14 @@ export default function MembersPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-<<<<<<< HEAD
     
-=======
-
-      {/* Tabla de miembros */}
->>>>>>> afb75bf933e10a27a8164a48c8899b5b816ddf92
       <Table>
         <TableHeader>
           <TableRow>
             <TableHead>{t("members.table.name")}</TableHead>
             <TableHead>{t("members.table.email")}</TableHead>
-<<<<<<< HEAD
             <TableHead>{t("members.table.status")}</TableHead>
             <TableHead>{t("members.table.joinDate")}</TableHead>
-=======
->>>>>>> afb75bf933e10a27a8164a48c8899b5b816ddf92
             <TableHead className="text-right">{t("members.table.actions")}</TableHead>
           </TableRow>
         </TableHeader>
@@ -272,7 +184,6 @@ export default function MembersPage() {
               <TableRow key={member.id}>
                 <TableCell>{member.name}</TableCell>
                 <TableCell>{member.email}</TableCell>
-<<<<<<< HEAD
                 <TableCell>
                   <Badge
                     className={`
@@ -285,8 +196,6 @@ export default function MembersPage() {
                   </Badge>
                 </TableCell>
                 <TableCell>{new Date(member.join_date).toISOString().split("T")[0]}</TableCell>
-=======
->>>>>>> afb75bf933e10a27a8164a48c8899b5b816ddf92
                 <TableCell className="text-right">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
