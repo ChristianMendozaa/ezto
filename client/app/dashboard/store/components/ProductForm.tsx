@@ -1,4 +1,3 @@
-// store/components/ProductForm.tsx
 "use client";
 
 import React, { ChangeEvent, FormEvent, useState } from "react";
@@ -84,17 +83,17 @@ export const ProductForm: React.FC<ProductFormProps> = ({ onSubmit }) => {
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
-            {/* Nombre */}
+            {/* Campo Nombre */}
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="name" className="text-right">{t("store.catalog.form.name")}</Label>
               <Input id="name" value={formData.name} onChange={handleInputChange} className="col-span-3" required />
             </div>
-            {/* SKU */}
+            {/* Campo SKU */}
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="sku" className="text-right">SKU</Label>
               <Input id="sku" value={formData.sku} onChange={handleInputChange} className="col-span-3" required />
             </div>
-            {/* Categoría */}
+            {/* Campo Categoría */}
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="category" className="text-right">{t("store.catalog.form.category")}</Label>
               <Select value={formData.category} onValueChange={handleCategoryChange}>
@@ -152,8 +151,11 @@ export const ProductForm: React.FC<ProductFormProps> = ({ onSubmit }) => {
               <Input id="product_image" type="file" onChange={handleImageChange} className="col-span-3" accept="image/*" />
             </div>
           </div>
+          
           <DialogFooter>
-            <Button type="submit" disabled={loading}>{t("store.catalog.form.save")}</Button>
+            <Button type="submit" disabled={loading}>
+              {t("store.catalog.form.save")}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

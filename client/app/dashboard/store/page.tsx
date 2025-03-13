@@ -1,4 +1,3 @@
-// store/StorePage.tsx
 "use client";
 
 import React, { useState } from "react";
@@ -12,10 +11,10 @@ import { useProducts } from "./hooks/useProducts";
 export default function StorePage() {
   const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState("catalog");
-  const { products, loading, fetchProducts, updateProduct, deleteProduct } = useProducts();
+  const { products, fetchProducts, updateProduct, deleteProduct } = useProducts();
 
   const handleEditProduct = (product: any) => {
-    // Aquí podrías implementar la lógica para editar un producto
+    // Aquí podrías abrir un modal para editar el producto
     console.log("Editar producto:", product);
   };
 
@@ -53,9 +52,7 @@ export default function StorePage() {
                 Object.entries(data).forEach(([key, value]) => {
                   formData.append(key, value);
                 });
-                if (image) {
-                  formData.append("product_image", image);
-                }
+                if (image) formData.append("product_image", image);
                 const res = await fetch("http://localhost:8001/products/", {
                   method: "POST",
                   credentials: "include",
@@ -71,7 +68,7 @@ export default function StorePage() {
             </CardContent>
           </Card>
         </TabsContent>
-        {/* Puedes agregar TabsContent para purchases e inventory según lo necesites */}
+        {/* Aquí puedes agregar TabsContent para 'purchases' e 'inventory' */}
       </Tabs>
     </div>
   );

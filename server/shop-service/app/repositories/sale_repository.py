@@ -29,7 +29,7 @@ class SaleRepository:
     @staticmethod
     def delete_sale(sale_id: str) -> bool:
         doc_ref = db.collection("sales").document(sale_id)
-        if not doc_ref.get().exists():
+        if not doc_ref.get().exists:
             return False
         doc_ref.delete()
         return True

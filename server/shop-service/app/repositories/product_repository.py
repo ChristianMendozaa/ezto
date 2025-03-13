@@ -54,7 +54,7 @@ class ProductRepository:
         Elimina un producto, retornando True si existía y False si no.
         """
         doc_ref = db.collection("products").document(product_id)
-        if not doc_ref.get().exists():
+        if not doc_ref.get().exists:
             return False
         doc_ref.delete()
         return True
