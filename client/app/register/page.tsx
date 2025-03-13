@@ -217,7 +217,6 @@ export default function RegisterPage() {
                   </div>
                 </RadioGroup>
               </div>
-
               {userType === "gym_owner" && (
                 <div className="space-y-4">
                   <h2 className="text-xl font-semibold">{t("auth.register.gymInfo")}</h2>

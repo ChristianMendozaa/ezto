@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useLanguage } from "@/lib/hooks/use-language";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, MoreHorizontal, Trash2 } from "lucide-react";
 import {
@@ -22,71 +23,102 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
+interface Member {
+  id: string;
+  name: string;
+  email: string;
+  join_date: string;
+  nfc_id: string;
+  status: string;
+}
+
 export default function MembersPage() {
   const { t } = useLanguage();
-  const [members, setMembers] = useState([]);
+  const [members, setMembers] = useState<Member[]>([]);
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
-  const [newMember, setNewMember] = useState({ name: "", email: "" });
+  const [newMember, setNewMember] = useState<Partial<Member>>({ name: "", email: "" });
+  const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
 
-  // Obtener el token desde localStorage (o usar cookies si es necesario)
-  const getAuthToken = () => {
-    return localStorage.getItem("token") || "";
-  };
+  const getAuthToken = () => localStorage.getItem("token") || "";
 
   useEffect(() => {
     const fetchMembers = async () => {
       try {
+        setLoading(true);
         const response = await fetch("http://localhost:8005/members", {
           method: "GET",
           headers: {
-            "Authorization": `Bearer ${getAuthToken()}`,
+            Authorization: `Bearer ${getAuthToken()}`,
             "Content-Type": "application/json",
           },
-          credentials: "include", // Si el backend usa cookies para autenticación
+          credentials: "include",
         });
-
-        if (!response.ok) {
-          throw new Error("Error en la autenticación o petición");
-        }
-
+  
+        if (!response.ok) throw new Error("Error en la autenticación o petición");
+  
         const data = await response.json();
-        setMembers(Array.isArray(data) ? data : []); // Evita `map is not a function`
+  
+        // Asegurar que cada miembro tenga un ID válido
+        const membersWithId = data.map((doc: any) => ({
+          id: doc.id || crypto.randomUUID(),  // Usa el ID del documento o genera uno temporal
+          ...doc
+        }));
+  
+        setMembers(membersWithId);
       } catch (error) {
         console.error("Error fetching members:", error);
+        setErrorMessage("Hubo un error al obtener los miembros.");
+      } finally {
+        setLoading(false);
       }
     };
-
+  
     fetchMembers();
   }, []);
+  
 
   const handleAddMember = async () => {
     try {
+      // Si tienes un id específico o quieres que Firebase lo maneje,
+      const generatedId = crypto.randomUUID();
+
+      // Crear los datos del nuevo miembro
+      const newMemberData = {
+        id: generatedId,  // Establecemos el ID generado
+        ...newMember,
+        status: "activo",  // Valor por defecto
+        join_date: new Date().toISOString(),  // Fecha en formato ISO 8601
+      };
       const response = await fetch("http://localhost:8005/members", {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${getAuthToken()}`,
+          Authorization: `Bearer ${getAuthToken()}`,
           "Content-Type": "application/json",
         },
         credentials: "include",
-        body: JSON.stringify(newMember),
+        body: JSON.stringify(newMemberData),
       });
-
+  
       if (!response.ok) throw new Error("Error al agregar miembro");
-
-      const newEntry = await response.json();
-      setMembers([...members, newEntry]);
+  
+      const newEntry: Member = await response.json();
+      setMembers((prevMembers) => [...prevMembers, newEntry]);
       setIsAddMemberOpen(false);
+      setSuccessMessage("Miembro agregado exitosamente.");
     } catch (error) {
       console.error("Error adding member:", error);
+      setErrorMessage("");
     }
   };
 
-  const handleDeleteMember = async (id) => {
+  const handleDeleteMember = async (id: string) => {
     try {
       const response = await fetch(`http://localhost:8005/members/${id}`, {
         method: "DELETE",
         headers: {
-          "Authorization": `Bearer ${getAuthToken()}`,
+          Authorization: `Bearer ${getAuthToken()}`,
           "Content-Type": "application/json",
         },
         credentials: "include",
@@ -94,9 +126,11 @@ export default function MembersPage() {
 
       if (!response.ok) throw new Error("Error al eliminar miembro");
 
-      setMembers(members.filter((member) => member.id !== id));
+      setMembers((prevMembers) => prevMembers.filter((member) => member.id !== id));
+      setSuccessMessage("Miembro eliminado exitosamente.");
     } catch (error) {
       console.error("Error deleting member:", error);
+      setErrorMessage("Hubo un error al eliminar el miembro.");
     }
   };
 
@@ -110,7 +144,10 @@ export default function MembersPage() {
         </Button>
       </div>
 
-      {/* Modal para agregar miembro */}
+      {errorMessage && <p className="text-red-500">{errorMessage}</p>}
+      {successMessage && <p className="text-green-500">{successMessage}</p>}
+      {loading && <p className="text-center text-gray-500">Cargando miembros...</p>}
+
       <Dialog open={isAddMemberOpen} onOpenChange={setIsAddMemberOpen}>
         <DialogContent>
           <DialogHeader>
@@ -130,13 +167,14 @@ export default function MembersPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Tabla de miembros */}
+    
       <Table>
         <TableHeader>
           <TableRow>
             <TableHead>{t("members.table.name")}</TableHead>
             <TableHead>{t("members.table.email")}</TableHead>
+            <TableHead>{t("members.table.status")}</TableHead>
+            <TableHead>{t("members.table.joinDate")}</TableHead>
             <TableHead className="text-right">{t("members.table.actions")}</TableHead>
           </TableRow>
         </TableHeader>
@@ -146,6 +184,18 @@ export default function MembersPage() {
               <TableRow key={member.id}>
                 <TableCell>{member.name}</TableCell>
                 <TableCell>{member.email}</TableCell>
+                <TableCell>
+                  <Badge
+                    className={`
+                      ${member.status === "activo" ? "bg-green-500 text-white" : ""}
+                      ${member.status === "inactivo" ? "bg-red-500 text-white" : ""}
+                      ${member.status === "suspendido" ? "bg-gray-500 text-white" : ""}
+                    `}
+                  >
+                    {t(`${member.status}`)}
+                  </Badge>
+                </TableCell>
+                <TableCell>{new Date(member.join_date).toISOString().split("T")[0]}</TableCell>
                 <TableCell className="text-right">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
