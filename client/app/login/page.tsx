@@ -87,12 +87,14 @@ export default function LoginPage() {
       }
 
     } catch (error: any) {
+      
       alert(error.message);
       // 🔥 1. Borrar cualquier cookie de sesión previa antes de autenticarse
       await fetch(process.env.NEXT_PUBLIC_BACKEND_URL + "/auth/logout", {
         method: "POST",
         credentials: "include",
       });
+
     } finally {
       setLoading(false);
     }
