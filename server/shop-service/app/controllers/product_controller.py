@@ -4,15 +4,19 @@ Controlador para gestionar los endpoints relacionados con productos.
 Proporciona rutas para crear, listar, obtener, actualizar y eliminar productos, 
 aplicando validaciones de seguridad y rol (gym_owner).
 """
+import traceback
 from fastapi import APIRouter, HTTPException, Depends, File, UploadFile, Form
 from typing import List, Optional
 from pydantic import BaseModel, Field
-
+import logging
 from app.models.product_model import ProductBase, ProductResponse
 from app.services.product_service import ProductService
 from app.services.auth_service import AuthService
 
 router = APIRouter()
+
+# Configurar logging
+logging.basicConfig(level=logging.INFO)
 
 class ErrorResponse(BaseModel):
     """
@@ -56,7 +60,7 @@ async def create_product(
     user: dict = Depends(AuthService.get_current_user)
 ):
     """
-    Crea un nuevo producto en la base de datos.  
+    Crea un nuevo producto en la base de datos.
     Se pueden enviar los datos por `multipart/form-data` junto con un archivo de imagen.
     Solo el `gym_owner` puede crear productos.
     """
@@ -76,14 +80,17 @@ async def create_product(
             barcode=barcode,
             status=status
         )
+        logging.info(f"Datos de producto recibidos: {product_data.dict()}")
         new_product = await ProductService.create_product(product_data, product_image, user)
+        logging.info(f"Producto creado exitosamente con ID: {new_product.id}")
         return new_product
     except HTTPException:
         raise
     except Exception as e:
+        error_details = traceback.format_exc()
+        logging.error("Error en create_product: %s", error_details)
         raise HTTPException(status_code=400, detail=str(e))
-
-
+    
 @router.get(
     "/",
     summary="Listar productos",
