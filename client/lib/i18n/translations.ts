@@ -1269,10 +1269,14 @@ export const translations = {
           stock: "Existencias",
           actions: "Acciones",
         },
-        categories: {
-          supplements: "Suplementos",
-          accessories: "Accesorios",
-        },
+       categories: {
+        "suplementos": "Suplementos",
+        "ropa": "Ropa",
+        "equipo": "Equipo",
+        "accesorios": "Accesorios",
+        "bebidas": "Bebidas",
+        "otros": "Otros"
+      },
         actions: {
           open: "Abrir menú",
           title: "Acciones de producto",
