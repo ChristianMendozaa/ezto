@@ -1,4 +1,3 @@
-// store/components/ProductTable.tsx
 "use client";
 
 import React from "react";

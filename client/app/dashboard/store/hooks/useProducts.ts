@@ -1,4 +1,3 @@
-// store/hooks/useProducts.ts
 import { useState, useEffect } from "react";
 
 export interface Product {
@@ -30,9 +29,7 @@ export const useProducts = () => {
   const fetchProducts = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/products/`, {
-        credentials: "include", // Se envía la cookie authToken automáticamente
-      });
+      const res = await fetch(`${API_URL}/products/`, { credentials: "include" });
       if (res.ok) {
         const data = await res.json();
         setProducts(data);
@@ -46,7 +43,6 @@ export const useProducts = () => {
     }
   };
 
-  // Actualizar producto
   const updateProduct = async (productId: string, updateData: Partial<Product>) => {
     try {
       const formData = new FormData();
@@ -60,25 +56,20 @@ export const useProducts = () => {
         credentials: "include",
         body: formData,
       });
-      if (!res.ok) {
-        throw new Error(await res.text());
-      }
+      if (!res.ok) throw new Error(await res.text());
       await fetchProducts();
     } catch (error) {
       console.error("Error al actualizar producto", error);
     }
   };
 
-  // Eliminar producto
   const deleteProduct = async (productId: string) => {
     try {
       const res = await fetch(`${API_URL}/products/${productId}`, {
         method: "DELETE",
         credentials: "include",
       });
-      if (!res.ok) {
-        throw new Error(await res.text());
-      }
+      if (!res.ok) throw new Error(await res.text());
       await fetchProducts();
     } catch (error) {
       console.error("Error al eliminar producto", error);

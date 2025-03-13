@@ -2,6 +2,7 @@
 
 from fastapi import FastAPI, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 
@@ -64,9 +65,9 @@ async def security_headers(request: Request, call_next):
         "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
         "Content-Security-Policy": (
             "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline'; "
-            "style-src 'self' 'unsafe-inline'; "
-            "img-src 'self' data:; "
+            "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+            "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+            "img-src 'self' data: https://fastapi.tiangolo.com; "
             "font-src 'self'; "
             "connect-src 'self'; "
             "frame-ancestors 'self';"
@@ -85,7 +86,9 @@ app.include_router(product_router, prefix="/products", tags=["Productos"])
 app.include_router(purchase_router, prefix="/purchases", tags=["Compras"])
 app.include_router(inventory_router, prefix="/inventory", tags=["Inventario"])
 app.include_router(supplier_router, prefix="/suppliers", tags=["Proveedores"])  
-
+@app.get("/", include_in_schema=False)
+async def root():
+    return RedirectResponse(url="/docs")
 @app.get("/health", tags=["Monitoreo"])
 async def health_check():
     return {"status": "ok", "service": "inventory-service"}

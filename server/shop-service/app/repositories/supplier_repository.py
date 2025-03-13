@@ -29,7 +29,7 @@ class SupplierRepository:
     @staticmethod
     def delete_supplier(supplier_id: str) -> bool:
         doc_ref = db.collection("suppliers").document(supplier_id)
-        if not doc_ref.get().exists():
+        if not doc_ref.get().exists:
             return False
         doc_ref.delete()
         return True
