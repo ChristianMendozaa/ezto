@@ -9,7 +9,6 @@ from app.middleware.rate_limit_middleware import RateLimitMiddleware
 from app.controllers.protected_controller import router as protected_router
 from app.controllers.auth_controller import router as auth_router
 from app.controllers.logout_controller import router as logout_router
-from app.controllers.membership_controller import router as membership_router
 
 app = FastAPI(
     title="Autenticación y Registro - Plataforma EzTo",
@@ -30,14 +29,13 @@ app = FastAPI(
         {"name": "Registro de Usuarios", "description": "Manejo de registro de nuevos usuarios en la plataforma."},
         {"name": "Rutas Protegidas", "description": "Endpoints protegidos que requieren autenticación."},
         {"name": "Logout", "description": "Cierre de sesión y eliminación de cookies de autenticación."},
-        {"name": "Planes de Membresía", "description": "Gestión de planes de membresía y asignaciones."},
     ]
 )
 
 # Configuración de CORS para permitir el acceso desde el frontend autorizado
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Especificar el origen del frontend
+    allow_origins=["http://localhost:3000"],  # Especificar el origen del frontend
     allow_credentials=True,
     allow_methods=["*"],  # Permitir todos los métodos
     allow_headers=["*"],  # Permitir todos los headers
@@ -89,4 +87,3 @@ app.include_router(login_router, prefix="/auth", tags=["Autenticación"])
 app.include_router(auth_router, prefix="/auth", tags=["Autenticación"])
 app.include_router(protected_router, prefix="/protected", tags=["Rutas Protegidas"])
 app.include_router(logout_router, prefix="/auth", tags=["Logout"])
-app.include_router(membership_router, prefix="/membership", tags=["Planes de Membresía"])
