@@ -13,14 +13,16 @@ logger = logging.getLogger(__name__)
 @router.get("/", tags=["Promociones"])
 async def list_promotions():
     """Obtiene la lista de todas las promociones disponibles."""
-    logger.debug("Recibida petición GET /promotions/list")  # 🚀 Ver si la petición llega
+    logger.debug("Recibida petición GET /promotions/list")  
     try:
-        promotions = await PromotionService.get_all_promotions()  # ✅ CORRECTO
-        logger.debug(f"Promociones obtenidas: {promotions}")  # 🚀 Ver si Firestore devuelve datos
+        promotions = await PromotionService.get_all_promotions() 
+        logger.debug(f"Promociones obtenidas: {promotions}")
         return [{"id": promo["id"], **promo} for promo in promotions]
     except Exception as e:
-        logger.error(f"Error en GET /promotions/list: {str(e)}")  # ❌ Si algo falla
+        logger.error(f"Error en GET /promotions/list: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
 
 @router.post(
     "/create",
@@ -40,6 +42,8 @@ async def create_promotion(promotion: Promotion):
     except Exception as e:
         logger.error(f"Error en POST /promotions/create: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
+    
+
 
 @router.put(
     "/update/{promotion_id}",
@@ -54,6 +58,10 @@ async def update_promotion(promotion_id: str, promotion: Promotion):
     except Exception as e:
         logger.error(f"Error en PUT /promotions/update/{promotion_id}: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
+    
+
+
+
 
 @router.delete(
     "/delete/{promotion_id}",

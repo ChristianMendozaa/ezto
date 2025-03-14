@@ -10,7 +10,7 @@ from app.controllers.promotion_controller import router as promotion_router  # I
 app = FastAPI(
     title="Gestión de Promociones - Plataforma EzTo",
     description="Microservicio para la gestión de promociones dentro del sistema. "
-                "Incluye autenticación basada en JWT, protección de rutas y manejo de sesiones.",
+                ":)",
     version="1.0.0",
     contact={
         "name": "Equipo EzTo",
