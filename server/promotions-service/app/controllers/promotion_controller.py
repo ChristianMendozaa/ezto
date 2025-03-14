@@ -1,8 +1,8 @@
 from fastapi import APIRouter, HTTPException
-from app.models.promotion_model import Promotion
 from app.services.promotion_service import PromotionService
-from typing import List
+from app.models.dtos.promotion_dto import PromotionDTO
 import logging
+from datetime import datetime
 
 router = APIRouter()
 
@@ -22,53 +22,35 @@ async def list_promotions():
         logger.error(f"Error en GET /promotions/list: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-
-
-@router.post(
-    "/create",
-    summary="Crear una nueva promoción",
-    description="Registra una nueva promoción en la plataforma.",
-    response_description="La promoción ha sido registrada exitosamente.",
-    responses={
-        200: {"description": "Promoción creada exitosamente"},
-        400: {"description": "Error en los datos proporcionados"},
-    },
-    tags=["Promociones"]
-)
-async def create_promotion(promotion: Promotion):
+@router.post("/create", tags=["Promociones"])
+async def create_promotion(promotion: PromotionDTO):
     """Crea una nueva promoción en la plataforma."""
     try:
-        return await PromotionService.create_promotion(promotion)
+        # 🔹 Convertir fechas a `datetime.datetime` para Firestore
+        promotion_data = promotion.dict()
+        promotion_data["start_date"] = datetime.strptime(promotion.start_date, "%Y-%m-%d")
+        promotion_data["end_date"] = datetime.strptime(promotion.end_date, "%Y-%m-%d")
+
+        return await PromotionService.create_promotion(promotion_data)
     except Exception as e:
         logger.error(f"Error en POST /promotions/create: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
-    
 
-
-@router.put(
-    "/update/{promotion_id}",
-    summary="Actualizar una promoción",
-    description="Actualiza los datos de una promoción existente.",
-    tags=["Promociones"]
-)
-async def update_promotion(promotion_id: str, promotion: Promotion):
+@router.put("/update/{promotion_id}", tags=["Promociones"])
+async def update_promotion(promotion_id: str, promotion: PromotionDTO):
     """Actualiza una promoción en la plataforma."""
     try:
-        return await PromotionService.update_promotion(promotion_id, promotion)
+        # 🔹 Convertir fechas antes de actualizar
+        promotion_data = promotion.dict()
+        promotion_data["start_date"] = datetime.strptime(promotion.start_date, "%Y-%m-%d")
+        promotion_data["end_date"] = datetime.strptime(promotion.end_date, "%Y-%m-%d")
+
+        return await PromotionService.update_promotion(promotion_id, promotion_data)
     except Exception as e:
         logger.error(f"Error en PUT /promotions/update/{promotion_id}: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
-    
 
-
-
-
-@router.delete(
-    "/delete/{promotion_id}",
-    summary="Eliminar una promoción",
-    description="Elimina una promoción de la plataforma.",
-    tags=["Promociones"]
-)
+@router.delete("/delete/{promotion_id}", tags=["Promociones"])
 async def delete_promotion(promotion_id: str):
     """Elimina una promoción por su ID."""
     try:

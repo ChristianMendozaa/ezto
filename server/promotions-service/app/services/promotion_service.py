@@ -1,10 +1,10 @@
-from app.models.promotion_model import Promotion
+from app.models.dtos.promotion_dto import PromotionDTO
 from app.repositories.promotion_repository import PromotionRepository
 
 class PromotionService:
     
     @staticmethod
-    async def create_promotion(promotion: Promotion):
+    async def create_promotion(promotion: PromotionDTO):
         return await PromotionRepository.create_promotion(promotion)
 
     @staticmethod
@@ -12,7 +12,7 @@ class PromotionService:
         return await PromotionRepository.get_all_promotions()
     
     @staticmethod
-    async def update_promotion(promotion_id: str, promotion: Promotion):
+    async def update_promotion(promotion_id: str, promotion: PromotionDTO):
         return await PromotionRepository.update_promotion(promotion_id, promotion)
     
     @staticmethod
