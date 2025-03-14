@@ -1,20 +1,26 @@
 # main.py
 
-from fastapi import FastAPI, Request, Depends
+from fastapi import FastAPI, Request, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, JSONResponse
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.exceptions import RequestValidationError
+import logging
 
 # Middlewares personalizados
 from app.middleware.auth_middleware import AuthMiddleware
 from app.middleware.rate_limit_middleware import RateLimitMiddleware
+from app.services.auth_service import AuthService
+import os
 
 # Controladores
 from app.controllers.product_controller import router as product_router
 from app.controllers.purchase_controller import router as purchase_router
 from app.controllers.inventory_controller import router as inventory_router
 from app.controllers.supplier_controller import router as supplier_router 
+
+logging.basicConfig(level=logging.INFO)
 
 app = FastAPI(
     title="Gestión de Inventario - Plataforma EzTo",
@@ -48,10 +54,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Middlewares esenciales
-app.add_middleware(RateLimitMiddleware)
+app.dependency_overrides[AuthService.get_current_user] = AuthService.get_test_user
+
+#app.add_middleware(RateLimitMiddleware)
 app.add_middleware(GZipMiddleware, minimum_size=1000)
-app.add_middleware(AuthMiddleware)
+#app.add_middleware(AuthMiddleware)
 app.add_middleware(
     TrustedHostMiddleware,
     allowed_hosts=["*"]  # Ajusta si necesitas restringir hosts
@@ -81,15 +88,36 @@ async def security_headers(request: Request, call_next):
     response.headers.update(security_headers)
     return response
 
+# Manejador global de errores de validación
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    logging.error(f"Error de validación: {exc}")
+    return JSONResponse(
+        status_code=422,
+        content={
+            "detail": "Error en la validación de los datos. Revisa la información enviada.",
+        }
+    )
+
+# Manejador global para todas las excepciones no controladas
+@app.exception_handler(Exception)
+async def general_exception_handler(request: Request, exc: Exception):
+    logging.error(f"Error inesperado: {exc}")
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Ocurrió un error interno. Por favor, intenta más tarde."}
+    )
+
 # Registro de routers principales
 app.include_router(product_router, prefix="/products", tags=["Productos"])
 app.include_router(purchase_router, prefix="/purchases", tags=["Compras"])
 app.include_router(inventory_router, prefix="/inventory", tags=["Inventario"])
-app.include_router(supplier_router, prefix="/suppliers", tags=["Proveedores"])  
+app.include_router(supplier_router, prefix="/suppliers", tags=["Proveedores"])
+
 @app.get("/", include_in_schema=False)
 async def root():
     return RedirectResponse(url="/docs")
+
 @app.get("/health", tags=["Monitoreo"])
 async def health_check():
     return {"status": "ok", "service": "inventory-service"}
-

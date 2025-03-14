@@ -17,6 +17,12 @@ class AuthService:
     Cualquier cambio en la lógica de 'auth' de tu otro microservicio NO afecta a este.
     Ambos pueden evolucionar de forma independiente.
     """
+    @staticmethod
+    async def get_test_user(request: Request) -> dict:
+        """
+        Función para pruebas: retorna un usuario dummy sin requerir verificación de token.
+        """
+        return {"user_id": "test_user", "email": "test@example.com", "role": "gym_owner"}
 
     @staticmethod
     async def get_current_user(request: Request) -> dict:
