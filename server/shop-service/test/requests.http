@@ -121,7 +121,7 @@ Cookie: authToken=validtoken
 }
 
 ### [Product] Listar productos - Éxito
-GET http://localhost:8000/products/
+GET http://localhost:8001/products/
 Cookie: authToken=validtoken
 
 ### [Product] Obtener producto por ID - Éxito
@@ -188,7 +188,7 @@ Cookie: authToken=validtoken
 }
 
 ### [Purchase] Listar ventas - Éxito
-GET http://localhost:8000/purchases/
+GET http://localhost:8001/purchases/
 Cookie: authToken=validtoken
 
 ### [Purchase] Obtener venta por ID - Éxito
@@ -235,7 +235,7 @@ Cookie: authToken=validtoken
 }
 
 ### [Supplier] Crear proveedor - Error: Nombre vacío (CORREGIDO)
-POST http://localhost:8000/suppliers/
+POST http://localhost:8001/suppliers/
 Content-Type: application/json
 Cookie: authToken=validtoken
 

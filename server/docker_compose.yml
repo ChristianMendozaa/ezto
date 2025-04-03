@@ -1,0 +1,23 @@
+version: "3.9"
+services:
+  auth-service:
+    build:
+      context: ./auth-service
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - ENV=development
+    volumes:
+      - ./auth-service:/app
+
+  shop-service:
+    build:
+      context: ./shop-service
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8001"
+    environment:
+      - ENV=development
+    volumes:
+      - ./shop-service:/app
