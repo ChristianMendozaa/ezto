@@ -19,6 +19,7 @@ class MemberInfo(BaseModel):
     training_goals: List[str] = Field(..., description="Objetivos de entrenamiento del usuario")
     activity_preferences: List[str] = Field(..., description="Preferencias de actividades del usuario")
 
+
 class UserRegister(BaseModel):
     full_name: str = Field(..., description="Nombre completo del usuario")
     email: EmailStr = Field(..., description="Correo electrónico del usuario")
