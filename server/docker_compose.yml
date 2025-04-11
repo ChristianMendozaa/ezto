@@ -10,7 +10,7 @@ services:
       - ENV=development
     volumes:
       - ./auth-service:/app
-
+  
   shop-service:
     build:
       context: ./shop-service
@@ -21,3 +21,14 @@ services:
       - ENV=development
     volumes:
       - ./shop-service:/app
+  
+  discovery-service:
+    build:
+      context: ./discovery-service
+      dockerfile: Dockerfile
+    ports:
+      - "8002:8000"    # Mapea el puerto interno 8000 del discovery a 8002 en el host (o el puerto que prefieras)
+    environment:
+      - ENV=development
+    volumes:
+      - ./discovery-service:/app
