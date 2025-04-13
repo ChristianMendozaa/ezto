@@ -44,7 +44,7 @@ class MemberRepository:
         """Elimina un miembro por su ID."""
         try:
             member_ref = db.collection("members").document(member_id)
-            await member_ref.delete()  # Firestore SDK es asincrónico
+            await asyncio.to_thread(member_ref.delete)
             return {"message": f"Miembro {member_id} eliminado exitosamente."}
         except Exception as e:
             raise Exception(f"Error al eliminar el miembro {member_id}: {str(e)}")
