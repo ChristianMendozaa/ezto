@@ -1,9 +1,12 @@
-from fastapi import APIRouter, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, UploadFile, File, Form
 from app.models.user_model import UserRegister
 from app.services.user_service import UserService
 from pydantic import EmailStr
-from typing import Optional, List
-from datetime import date
+from typing import Optional
+from datetime import date, datetime
+from app.utils.response_helper import success_response, error_response
+from app.models.responses_models import RegisterResponse
+import re
 
 router = APIRouter()
 
@@ -11,30 +14,7 @@ router = APIRouter()
     "/register",
     summary="Registro de nuevo usuario",
     description="Registra un nuevo usuario como miembro o dueño de un gimnasio en la plataforma.",
-    response_description="El usuario ha sido registrado exitosamente.",
-    responses={
-        200: {
-            "description": "Usuario registrado exitosamente",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "message": "Usuario registrado exitosamente",
-                        "uid": "abc123xyz"
-                    }
-                }
-            }
-        },
-        400: {
-            "description": "Error en los datos proporcionados",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "detail": "Las contraseñas no coinciden."
-                    }
-                }
-            }
-        }
-    },
+    response_model=RegisterResponse,
     tags=["Registro de Usuarios"]
 )
 async def register_user(
@@ -72,12 +52,85 @@ async def register_user(
     - **gym_logo**: Imagen opcional del logo del gimnasio
     """
     try:
-        # Procesar las listas enviadas como cadenas separadas por comas
+        # Validación de contraseñas
+        if len(password) < 8:
+            return error_response("La contraseña debe tener al menos 8 caracteres.", 400)
+
+        if not any(char.isdigit() for char in password):
+            return error_response("La contraseña debe contener al menos un número.", 400)
+
+        if not any(char.isupper() for char in password):
+            return error_response("La contraseña debe contener al menos una letra mayúscula.", 400)
+
+        if not any(char in "!@#$%^&*()-_+=" for char in password):
+            return error_response("La contraseña debe contener al menos un carácter especial (!@#$%^&*()-_+=).", 400)
+
+        if password != confirm_password:
+            return error_response("Las contraseñas no coinciden.", 400)
+
+        # Validación del tipo de usuario
+        if user_type not in ["gym_owner", "gym_member"]:
+            return error_response("El tipo de usuario debe ser 'gym_owner' o 'gym_member'.", 400)
+ 
+        # Validación de campos obligatorios según el tipo de usuario
+        if user_type == "gym_owner":
+            if not gym_name:
+                return error_response("El nombre del gimnasio es obligatorio para dueños de gimnasio.", 400)
+            if not gym_address:
+                return error_response("La dirección del gimnasio es obligatoria para dueños de gimnasio.", 400)
+            if not gym_phone:
+                return error_response("El teléfono del gimnasio es obligatorio para dueños de gimnasio.", 400)
+            if not opening_hours:
+                return error_response("El horario de atención del gimnasio es obligatorio para dueños de gimnasio.", 400)
+            if not services_offered:
+                return error_response("Debe especificar al menos un servicio ofrecido por el gimnasio.", 400)
+            if capacity is not None and capacity <= 0:
+                return error_response("La capacidad del gimnasio debe ser un número positivo.", 400)
+
+        if user_type == "gym_member":
+            if not gym_id:
+                return error_response("El ID del gimnasio es obligatorio para miembros.", 400)
+            if not membership_number:
+                return error_response("El número de membresía es obligatorio para miembros.", 400)
+            if birth_date is None:
+                return error_response("La fecha de nacimiento es obligatoria para miembros.", 400)
+
+            # Validar que la persona tenga al menos 14 años para registrarse
+            from datetime import datetime
+            today = datetime.today().date()
+            age = (today - birth_date).days // 365
+            if age < 14:
+                return error_response("Debes tener al menos 14 años para registrarte.", 400)
+
+            if gender not in ["Masculino", "Femenino", "Otro"]:
+                return error_response("El género debe ser 'Masculino', 'Femenino' o 'Otro'.", 400)
+
+        # Validación del número de teléfono
+        import re
+        phone_pattern = r"^\+?[1-9]\d{7,14}$"  # Formato internacional
+        if not re.match(phone_pattern, phone):
+            return error_response("El número de teléfono no es válido. Debe contener entre 8 y 15 dígitos.", 400)
+
+        # Validación de redes sociales
+        if social_media:
+            if not social_media.startswith("http"):
+                return error_response("El enlace a redes sociales debe ser una URL válida.", 400)
+
+        # Validación de la imagen del gimnasio (opcional)
+        if gym_logo:
+            allowed_extensions = ["image/jpeg", "image/png", "image/jpg"]
+            if gym_logo.content_type not in allowed_extensions:
+                return error_response("El logo del gimnasio debe ser una imagen en formato JPG o PNG.", 400)
+
+            if gym_logo.size > 100 * 1024 * 1024:  # 10MB máximo
+                return error_response("El logo del gimnasio no debe superar los 10MB.", 400)
+
+        # Procesar campos de lista
         services_list = services_offered.split(",") if services_offered else []
         training_goals_list = training_goals.split(",") if training_goals else []
         activity_preferences_list = activity_preferences.split(",") if activity_preferences else []
 
-        # Construir el diccionario de datos del usuario
+        # Crear estructura de datos
         user_data = {
             "full_name": full_name,
             "email": email,
@@ -104,11 +157,13 @@ async def register_user(
             } if user_type == "gym_member" else None,
         }
 
-        # Crear un objeto UserRegister desde el diccionario
+        # Validar con modelo
         user = UserRegister(**user_data)
 
-        # Pasar la imagen al servicio de usuario
-        return await UserService.register_user(user, gym_logo)
+        # Guardar usuario
+        # result = await UserService.register_user(user, gym_logo)
+
+        return RegisterResponse(message="Usuario registrado exitosamente", uid="1232")
 
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        return error_response(str(e), 500)

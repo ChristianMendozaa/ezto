@@ -1,22 +1,9 @@
 from fastapi import APIRouter, Depends, Request
 from app.services.auth_service import AuthService
-from pydantic import BaseModel, Field
+from app.utils.response_helper import success_response
+from app.models.responses_models import DashboardResponse, ClientResponse
 
 router = APIRouter()
-
-class DashboardResponse(BaseModel):
-    """
-    Respuesta para el Panel de Administración.
-    """
-    message: str = Field(..., title="Mensaje", description="Mensaje de bienvenida al Dashboard.")
-    user: dict = Field(..., title="Usuario", description="Información del usuario autenticado.")
-
-class ClientResponse(BaseModel):
-    """
-    Respuesta para el Panel de Cliente.
-    """
-    message: str = Field(..., title="Mensaje", description="Mensaje de bienvenida al Panel de Cliente.")
-    user: dict = Field(..., title="Usuario", description="Información del usuario autenticado.")
 
 @router.get(
     "/dashboard",
@@ -28,7 +15,7 @@ async def dashboard(user: dict = Depends(lambda request: AuthService.require_rol
     """
     Endpoint para acceder al panel de administración de gimnasios.
     """
-    return {"message": "Bienvenido al Dashboard", "user": user}
+    return success_response({"message": "Bienvenido al Dashboard", "user": user})
 
 @router.get(
     "/client",
@@ -40,4 +27,4 @@ async def client(user: dict = Depends(lambda request: AuthService.require_role(r
     """
     Endpoint para acceder al panel de clientes del gimnasio.
     """
-    return {"message": "Bienvenido al Panel de Cliente", "user": user}
+    return success_response({"message": "Bienvenido al Panel de Cliente", "user": user})

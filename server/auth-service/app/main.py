@@ -3,12 +3,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from app.controllers.register_controller import router as register_router
-from app.controllers.login_controller import router as login_router
+
 from app.middleware.auth_middleware import AuthMiddleware
 from app.middleware.rate_limit_middleware import RateLimitMiddleware
 from app.controllers.protected_controller import router as protected_router
 from app.controllers.auth_controller import router as auth_router
-from app.controllers.logout_controller import router as logout_router
+
 
 app = FastAPI(
     title="Autenticación y Registro - Plataforma EzTo",
@@ -83,7 +83,7 @@ app.add_middleware(
 
 # Inclusión de routers con prefijos y tags
 app.include_router(register_router, prefix="/auth", tags=["Registro de Usuarios"])
-app.include_router(login_router, prefix="/auth", tags=["Autenticación"])
+app.include_router(auth_router, prefix="/auth", tags=["Autenticación"])
 app.include_router(auth_router, prefix="/auth", tags=["Autenticación"])
 app.include_router(protected_router, prefix="/protected", tags=["Rutas Protegidas"])
-app.include_router(logout_router, prefix="/auth", tags=["Logout"])
+app.include_router(auth_router, prefix="/auth", tags=["Logout"])

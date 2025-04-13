@@ -15,7 +15,7 @@ import { LanguageToggle } from "@/components/language-toggle"
 import { Dumbbell } from "lucide-react"
 import { auth } from "@/lib/firebaseConfig";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { useAuth } from "@/lib/auth-context"; // 🔥 Importamos el AuthContext
+import { useAuth } from "@/lib/auth-context";
 
 export default function LoginPage() {
   const { t } = useLanguage()
@@ -23,7 +23,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false);
-  const { setUser } = useAuth(); // 🔥 Usamos AuthContext para actualizar el usuario
+  const { setUser } = useAuth(); //  Usamos AuthContext para actualizar el usuario
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,7 +36,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
 
-      // 🔥 1. Borrar cualquier cookie de sesión previa antes de autenticarse
+      //  1. Borrar cualquier cookie de sesión previa antes de autenticarse
       await fetch(process.env.NEXT_PUBLIC_BACKEND_URL + "/auth/logout", {
         method: "POST",
         credentials: "include",
@@ -76,10 +76,10 @@ export default function LoginPage() {
 
       const data = await response.json();
 
-      // 🔥 Actualizar el estado global del usuario
+      //  Actualizar el estado global del usuario
       setUser(data);
 
-      // 🔄 Redirigir según el rol
+      //  Redirigir según el rol
       if (data.role === "gym_owner") {
         router.replace("/dashboard");
       } else {
@@ -89,7 +89,7 @@ export default function LoginPage() {
     } catch (error: any) {
       
       alert(error.message);
-      // 🔥 1. Borrar cualquier cookie de sesión previa antes de autenticarse
+      //  1. Borrar cualquier cookie de sesión previa antes de autenticarse
       await fetch(process.env.NEXT_PUBLIC_BACKEND_URL + "/auth/logout", {
         method: "POST",
         credentials: "include",

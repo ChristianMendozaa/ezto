@@ -113,7 +113,7 @@ export default function RegisterPage() {
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/register`, {
         method: "POST",
-        body: formData, // 🔥 Enviar como multipart/form-data
+        body: formData, //   Enviar como multipart/form-data
         headers: {
           "Accept": "application/json",
         },

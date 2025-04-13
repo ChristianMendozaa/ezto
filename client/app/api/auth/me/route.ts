@@ -8,12 +8,12 @@ export async function GET() {
 
     const res = await fetch(process.env.NEXT_PUBLIC_BACKEND_URL + "/auth/me", {
       method: "GET",
-      credentials: "include", // 🔥 Asegura que las cookies se envíen
+      credentials: "include", //   Asegura que las cookies se envíen
       headers: {
         "Content-Type": "application/json",
-        "Cookie": `authToken=${authToken}`, // 🔥 Forzar el envío manual
+        "Cookie": `authToken=${authToken}`, //   Forzar el envío manual
       },
-      cache: "no-store", // 🔥 Evita caché en la solicitud
+      cache: "no-store", //   Evita caché en la solicitud
     });
 
 
