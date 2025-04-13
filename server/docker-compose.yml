@@ -1,0 +1,19 @@
+version: "3.9"
+services:
+  auth-service:
+    build:
+      context: ./auth-service
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./auth-service:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    environment:
+      - ENV=development
+
+  # Otros servicios que tengas...
+
+networks:
+  default:
+    name: ezto
