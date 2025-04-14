@@ -1,31 +1,23 @@
-# main.py
-
+# main.py (Microservicio de Shop con registro en Consul)
+import os
+import socket
+import uuid
+import requests
+import logging
 from fastapi import FastAPI, Request, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse, JSONResponse
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.exceptions import RequestValidationError
-import logging
 
-# Middlewares personalizados
-from app.middleware.auth_middleware import AuthMiddleware
-from app.middleware.rate_limit_middleware import RateLimitMiddleware
-from app.services.auth_service import AuthService
-import os
-
-# Controladores
-from app.controllers.product_controller import router as product_router
-from app.controllers.purchase_controller import router as purchase_router
-from app.controllers.inventory_controller import router as inventory_router
-from app.controllers.supplier_controller import router as supplier_router 
-
+# Configurar logging
 logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
-    title="Gestión de Inventario - Plataforma EzTo",
-    description="Microservicio para gestión de inventario y registro de compras en gimnasios. "
-                "Incluye control de stock, movimiento de productos y transacciones comerciales.",
+    title="Gestión de Inventario - Plataforma EzTo (Shop Service)",
+    description="Microservicio para gestión de inventario y registro de compras en gimnasios.",
     version="1.0.0",
     contact={
         "name": "Equipo EzTo",
@@ -48,21 +40,14 @@ app = FastAPI(
 # Configuración de CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Ajusta según tu frontend
+    allow_origins=["http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-app.dependency_overrides[AuthService.get_current_user] = AuthService.get_test_user
-
-#app.add_middleware(RateLimitMiddleware)
 app.add_middleware(GZipMiddleware, minimum_size=1000)
-#app.add_middleware(AuthMiddleware)
-app.add_middleware(
-    TrustedHostMiddleware,
-    allowed_hosts=["*"]  # Ajusta si necesitas restringir hosts
-)
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=["*"])
 
 # Middleware de seguridad de headers
 @app.middleware("http")
@@ -88,27 +73,29 @@ async def security_headers(request: Request, call_next):
     response.headers.update(security_headers)
     return response
 
-# Manejador global de errores de validación
+# Manejadores globales de errores (validación y generales)
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    logging.error(f"Error de validación: {exc}")
+    logger.error(f"Error de validación: {exc}")
     return JSONResponse(
         status_code=422,
-        content={
-            "detail": "Error en la validación de los datos. Revisa la información enviada.",
-        }
+        content={"detail": "Error en la validación de los datos. Revisa la información enviada."}
     )
 
-# Manejador global para todas las excepciones no controladas
 @app.exception_handler(Exception)
 async def general_exception_handler(request: Request, exc: Exception):
-    logging.error(f"Error inesperado: {exc}")
+    logger.error(f"Error inesperado: {exc}")
     return JSONResponse(
         status_code=500,
         content={"detail": "Ocurrió un error interno. Por favor, intenta más tarde."}
     )
 
-# Registro de routers principales
+# Aquí se incluirían tus routers (productos, compras, inventario, proveedores)
+from app.controllers.product_controller import router as product_router
+from app.controllers.purchase_controller import router as purchase_router
+from app.controllers.inventory_controller import router as inventory_router
+from app.controllers.supplier_controller import router as supplier_router
+
 app.include_router(product_router, prefix="/products", tags=["Productos"])
 app.include_router(purchase_router, prefix="/purchases", tags=["Compras"])
 app.include_router(inventory_router, prefix="/inventory", tags=["Inventario"])
@@ -120,4 +107,50 @@ async def root():
 
 @app.get("/health", tags=["Monitoreo"])
 async def health_check():
-    return {"status": "ok", "service": "inventory-service"}
+    return {"status": "ok", "service": "shop-service"}
+
+# Función para registrar el servicio en Consul
+def register_service_with_consul():
+    # Obtén la URL de Consul desde la variable de entorno. Usa "consul" (nombre del servicio) en Docker Compose.
+    consul_addr = os.getenv("CONSUL_ADDR", "http://localhost:8500")
+    # El service_id se genera de forma única para este registro.
+    service_id = f"shop-service-{str(uuid.uuid4())}"
+    service_name = "shop-service"
+    service_port = int(os.getenv("PORT", 8001))
+    # Obtén la IP del contenedor o usa 'localhost' (nota: en Docker, hostname de shop-service es su contenedor)
+    try:
+        host_ip = socket.gethostbyname(socket.gethostname())
+    except Exception:
+        host_ip = "localhost"
+
+    check = {
+        "HTTP": f"http://{host_ip}:{service_port}/health",
+        "Interval": "10s",
+        "Timeout": "5s",
+        "DeregisterCriticalServiceAfter": "1m"
+    }
+    payload = {
+        "ID": service_id,
+        "Name": service_name,
+        "Address": host_ip,
+        "Port": service_port,
+        "Check": check
+    }
+    try:
+        url = f"{consul_addr}/v1/agent/service/register"
+        response = requests.put(url, json=payload, timeout=5)
+        if response.status_code == 200:
+            logger.info(f"Service registered with Consul: {response.json()} (ID: {service_id})")
+        else:
+            logger.error(f"Failed to register service with Consul: {response.status_code} {response.text}")
+    except Exception as e:
+        logger.exception("Exception when registering service with Consul: %s", str(e))
+
+# Evento de startup para registrar el servicio en Consul
+@app.on_event("startup")
+async def startup_register_service():
+    register_service_with_consul()
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="0.0.0.0", port=8001, reload=True)

@@ -12,7 +12,7 @@ RUN pip install --upgrade pip && pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Expón el puerto 8000
-EXPOSE 8000
+EXPOSE 8003
 
 # Comando para arrancar la aplicación con uvicorn
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

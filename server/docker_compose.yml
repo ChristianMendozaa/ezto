@@ -1,5 +1,11 @@
-version: "3.9"
+
 services:
+  consul:
+    image: hashicorp/consul:latest
+    command: agent -dev -client=0.0.0.0
+    ports:
+      - "8500:8500"
+      
   auth-service:
     build:
       context: ./auth-service
@@ -10,7 +16,9 @@ services:
       - ENV=development
     volumes:
       - ./auth-service:/app
-  
+    depends_on:
+      - consul
+
   shop-service:
     build:
       context: ./shop-service
@@ -19,16 +27,9 @@ services:
       - "8001:8001"
     environment:
       - ENV=development
+      - PORT=8001
+      - CONSUL_ADDR=http://consul:8500
     volumes:
       - ./shop-service:/app
-  
-  discovery-service:
-    build:
-      context: ./discovery-service
-      dockerfile: Dockerfile
-    ports:
-      - "8002:8000"    # Mapea el puerto interno 8000 del discovery a 8002 en el host (o el puerto que prefieras)
-    environment:
-      - ENV=development
-    volumes:
-      - ./discovery-service:/app
+    depends_on:
+      - consul

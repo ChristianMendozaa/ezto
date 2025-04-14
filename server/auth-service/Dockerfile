@@ -15,7 +15,7 @@ RUN pip install --upgrade pip && \
 COPY . .
 
 # Expone el puerto en el que se ejecutará la aplicación (ajusta si es necesario)
-EXPOSE 8001
+EXPOSE 8000
 
 # Comando para iniciar el servidor Uvicorn
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8001", "--reload"]
