@@ -1,3 +1,4 @@
+import traceback
 from fastapi import APIRouter, UploadFile, File, Form
 from app.models.user_model import UserRegister
 from app.services.user_service import UserService
@@ -160,10 +161,13 @@ async def register_user(
         # Validar con modelo
         user = UserRegister(**user_data)
 
-        # Guardar usuario
-        # result = await UserService.register_user(user, gym_logo)
+        # Guardar usuario (incluye creación en Keycloak y Firestore)
+        result = await UserService.register_user(user, gym_logo)
 
-        return RegisterResponse(message="Usuario registrado exitosamente", uid="1232")
+        # Devolver la respuesta correcta con el UID real
+        return RegisterResponse(message=result["message"], uid=result["uid"])
 
     except Exception as e:
+        print("🚨 Error durante el registro de usuario:")
+        traceback.print_exc()  # Imprime el traceback completo
         return error_response(str(e), 500)

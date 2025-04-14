@@ -23,34 +23,33 @@ async def get_current_user(request: Request):
     except HTTPException as e:
         return error_response(e.detail, e.status_code)
 
-@router.post(
-    "/login",
-    summary="Autenticar usuario y establecer sesión",
-    description="""
-    Endpoint para autenticar a un usuario mediante un token JWT en el header `Authorization`.  
-    Si el token es válido, se devuelve la información del usuario y se establece una cookie `authToken`.
-    """,
-    response_model=LoginSuccessResponse
-)
-async def login_user(response: Response, authorization: str = Header(None)):
+class LoginData(BaseModel):
+    email: str
+    password: str
+
+@router.post("/login")
+async def login_user(data: LoginData, response: Response):
     """
-    Inicia sesión con un token de autorización y configura una cookie con el token de sesión.
+    Inicia sesión con email y contraseña. Solicita el token a Keycloak y lo guarda en cookie.
     """
-    if not authorization:
-        return error_response("Token requerido", 401)
-    
     try:
-        token = authorization.split("Bearer ")[-1]  # Extraer el token correctamente
+        from app.utils.keycloak_config import keycloak_openid
+
+        token = keycloak_openid.token(
+            username=data.email,
+            password=data.password,
+            grant_type="password"
+        )["access_token"]
+
         user_data = await AuthService.verify_token(token)
 
-        #   Establecer la cookie con el token de sesión
         response.set_cookie(
             key="authToken",
             value=token,
-            httponly=True,  # Protege contra JavaScript (XSS)
-            secure=False,   # ⚠ Para localhost debe ser False, en producción usa True
-            samesite="Lax", # Permite envío seguro de cookies
-            max_age=86400   # Expira en 24 horas
+            httponly=True,
+            secure=False,
+            samesite="Lax",
+            max_age=86400
         )
 
         return {
@@ -59,10 +58,10 @@ async def login_user(response: Response, authorization: str = Header(None)):
             "role": user_data["role"],
             "token": token
         }
-    except HTTPException as e:
-        return error_response(e.detail, e.status_code)
+
     except Exception as e:
-        return error_response("Error interno del servidor", 500)
+        print(f"❌ Error al iniciar sesión: {e}")
+        raise HTTPException(status_code=401, detail="Credenciales inválidas")
 
 @router.post(
     "/logout",
