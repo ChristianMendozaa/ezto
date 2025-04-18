@@ -10,9 +10,9 @@ keycloak_admin = KeycloakAdmin(
     verify=False
 )
 
-# Cliente para autenticación (sin client_secret aquí)
+# Cliente para autenticación
 keycloak_openid = KeycloakOpenID(
-    server_url="http://keycloak:8080/",
+    server_url="http://keycloak:8080/",            
     realm_name="master",
     client_id="ezto-client",
     client_secret_key="ezto-secret",

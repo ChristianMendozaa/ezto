@@ -3,6 +3,7 @@ from pydantic import BaseModel, Field
 from app.services.auth_service import AuthService
 from app.utils.response_helper import StandardResponse, success_response, error_response
 from app.models.responses_models import LoginSuccessResponse, UserResponse
+from app.utils.keycloak_config import keycloak_openid
 
 router = APIRouter()
 
@@ -33,8 +34,6 @@ async def login_user(data: LoginData, response: Response):
     Inicia sesión con email y contraseña. Solicita el token a Keycloak y lo guarda en cookie.
     """
     try:
-        from app.utils.keycloak_config import keycloak_openid
-
         token = keycloak_openid.token(
             username=data.email,
             password=data.password,
@@ -60,7 +59,7 @@ async def login_user(data: LoginData, response: Response):
         }
 
     except Exception as e:
-        print(f"❌ Error al iniciar sesión: {e}")
+        print(f"Error al iniciar sesión: {e}")
         raise HTTPException(status_code=401, detail="Credenciales inválidas")
 
 @router.post(

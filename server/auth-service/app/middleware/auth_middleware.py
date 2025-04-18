@@ -2,20 +2,13 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from fastapi import Request
 from fastapi.responses import JSONResponse
 from keycloak import KeycloakOpenID
+from app.utils.keycloak_config import keycloak_openid
 import logging
 
 logger = logging.getLogger(__name__)
 
 EXCLUDED_PATHS = ["/auth/logout", "/auth/register", "/auth/login"]
 
-# Asegúrate de tener la configuración correcta
-keycloak_openid = KeycloakOpenID(
-    server_url="http://keycloak:8080/",
-    realm_name="master",
-    client_id="ezto-client",
-    client_secret_key="ezto-secret",  # Reemplaza con el valor real
-    verify=False             
-)
 
 class AuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):

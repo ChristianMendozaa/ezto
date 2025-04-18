@@ -1,20 +1,62 @@
 version: "3.9"
+
 services:
+  traefik:
+    image: traefik:v2.11
+    command:
+      - "--api.dashboard=true"
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--entrypoints.web.address=:80"
+      - "--log.level=DEBUG"
+      - "--tracing=true"
+      - "--tracing.jaeger=true"
+      - "--tracing.jaeger.samplingServerURL=http://jaeger:5778/sampling"
+      - "--tracing.jaeger.localAgentHostPort=jaeger:6831"
+      - "--tracing.jaeger.samplingType=const"
+      - "--tracing.jaeger.samplingParam=1.0"
+    ports:
+      - "80:80"
+      - "8082:8080"  # Dashboard UI
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./traefik_dynamic.yml:/etc/traefik/dynamic/traefik_dynamic.yml
+    networks:
+      - ezto
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.51
+    ports:
+      - "16686:16686"      # UI de Jaeger
+      - "6831:6831/udp"    # Tracing
+    networks:
+      - ezto
+
   auth-service:
     build:
       context: ./auth-service
       dockerfile: Dockerfile
-    ports:
-      - "8000:8000"
     volumes:
       - ./auth-service:/app
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     environment:
       - ENV=development
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.auth.rule=PathPrefix(`/auth`)"
+      - "traefik.http.routers.auth.entrypoints=web"
+      - "traefik.http.routers.auth.middlewares=auth-headers"
+      - "traefik.http.middlewares.auth-headers.headers.customrequestheaders.X-From-Traefik=EzTo"
+      - "traefik.http.middlewares.retry-auth.retry.attempts=3"
+      - "traefik.http.middlewares.retry-auth.retry.initialinterval=500ms"
+      - "traefik.http.services.auth.loadbalancer.healthcheck.path=/health"
+      - "traefik.http.services.auth.loadbalancer.healthcheck.interval=5s"
+      - "traefik.http.services.auth.loadbalancer.healthcheck.timeout=3s"
     networks:
       - ezto
     depends_on:
       - keycloak
+      - consul
 
   keycloak:
     image: quay.io/keycloak/keycloak:22.0.1
@@ -42,6 +84,15 @@ services:
       POSTGRES_PASSWORD: keycloak
     volumes:
       - pgdata:/var/lib/postgresql/data
+    networks:
+      - ezto
+
+  consul:
+    image: consul:1.15
+    ports:
+      - "8500:8500"
+      - "8600:8600/udp"
+    command: agent -dev -client=0.0.0.0
     networks:
       - ezto
 

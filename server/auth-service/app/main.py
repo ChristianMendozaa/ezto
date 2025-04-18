@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
@@ -9,6 +9,7 @@ from app.middleware.rate_limit_middleware import RateLimitMiddleware
 from app.controllers.protected_controller import router as protected_router
 from app.controllers.auth_controller import router as auth_router
 
+from app.services.consul_service import register_service, deregister_service
 
 app = FastAPI(
     title="Autenticación y Registro - Plataforma EzTo",
@@ -80,6 +81,19 @@ app.add_middleware(
     TrustedHostMiddleware,
     allowed_hosts=["*"],
 )
+
+@app.get("/health", tags=["Monitoreo"])
+def health_check():
+    return {"status": "ok"}
+    #raise HTTPException(status_code=500, detail="Simulación de error")
+
+@app.on_event("startup")
+def startup_event():
+    register_service()
+
+@app.on_event("shutdown")
+def shutdown_event():
+    deregister_service()
 
 # Inclusión de routers con prefijos y tags
 app.include_router(register_router, prefix="/auth", tags=["Registro de Usuarios"])
