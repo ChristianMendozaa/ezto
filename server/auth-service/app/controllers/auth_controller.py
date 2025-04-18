@@ -3,6 +3,7 @@ from pydantic import BaseModel, Field
 from app.services.auth_service import AuthService
 from app.utils.response_helper import StandardResponse, success_response, error_response
 from app.models.responses_models import LoginSuccessResponse, UserResponse
+from app.models.request_models import LoginData
 from app.utils.keycloak_config import keycloak_openid
 
 router = APIRouter()
@@ -11,28 +12,26 @@ router = APIRouter()
     "/me",
     summary="Obtener usuario autenticado",
     description="Obtiene la información del usuario autenticado extrayendo el token de la cookie `authToken`.",
-    response_model=UserResponse  # La documentación sigue mostrando la estructura de usuario
+    response_model=UserResponse,
+    status_code=200,
+    tags=["Autenticación"]
 )
 async def get_current_user(request: Request):
-    """
-    Extrae la cookie y obtiene el usuario autenticado.
-    Si la autenticación falla, devuelve un error con la razón específica.
-    """
     try:
         user = await AuthService.get_current_user(request)
-        return success_response(user)
+        return user
     except HTTPException as e:
-        return error_response(e.detail, e.status_code)
+        raise e
 
-class LoginData(BaseModel):
-    email: str
-    password: str
-
-@router.post("/login")
+@router.post(
+    "/login",
+    summary="Iniciar sesión",
+    description="Inicia sesión con email y contraseña. Solicita el token a Keycloak y lo guarda como cookie `authToken`.",
+    response_model=LoginSuccessResponse,
+    status_code=200,
+    tags=["Autenticación"]
+)
 async def login_user(data: LoginData, response: Response):
-    """
-    Inicia sesión con email y contraseña. Solicita el token a Keycloak y lo guarda en cookie.
-    """
     try:
         token = keycloak_openid.token(
             username=data.email,
@@ -65,14 +64,11 @@ async def login_user(data: LoginData, response: Response):
 @router.post(
     "/logout",
     summary="Cerrar sesión",
-    description="Elimina la cookie de autenticación para cerrar sesión de manera segura.",
-    response_model=StandardResponse
+    description="Elimina la cookie de autenticación `authToken` para cerrar sesión de manera segura.",
+    response_model=StandardResponse,
+    status_code=200,
+    tags=["Logout"]
 )
 async def logout(response: Response):
-    """
-    Endpoint para cerrar sesión.  
-    Elimina la cookie de autenticación `authToken` del usuario.
-    """
     response.headers["Set-Cookie"] = "authToken=; Path=/; HttpOnly; Secure=False; SameSite=Lax; Max-Age=0"
-    
     return success_response({"message": "Logout exitoso"})

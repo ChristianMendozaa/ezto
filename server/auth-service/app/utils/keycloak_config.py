@@ -1,6 +1,6 @@
 from keycloak import KeycloakAdmin, KeycloakOpenID
 
-# Admin client (usado solo para tareas administrativas como crear usuarios)
+# Admin client
 keycloak_admin = KeycloakAdmin(
     server_url="http://keycloak:8080/",
     username="admin",

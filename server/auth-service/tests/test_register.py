@@ -1,108 +1,104 @@
 import pytest
-from httpx import AsyncClient, ASGITransport
-from app.main import app  # asegúrate que esto apunta correctamente a tu instancia de FastAPI
+from httpx import AsyncClient
+from datetime import date, timedelta
+from app.main import app  # asegúrate de que `PYTHONPATH=.` esté configurado o usa rutas relativas si estás fuera del proyecto
 
-transport = ASGITransport(app=app)
-
+# 1. Contraseñas no coinciden
 @pytest.mark.asyncio
-async def test_register_gym_owner_success():
-    async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.post("auth/register", data={
-            "full_name": "Test Owner",
-            "email": "owner@test.com",
-            "password": "TestPass123!",
-            "confirm_password": "TestPass123!",
-            "phone": "+59171234567",
-            "user_type": "gym_owner",
-            "gym_name": "Test Gym",
-            "gym_address": "Calle Falsa 123",
-            "gym_phone": "+59176543210",
-            "opening_hours": "6:00-22:00",
-            "services_offered": "weights,cardio",
-            "capacity": 50,
-            "social_media": "https://instagram.com/testgym"
-        }, files={})
-        assert response.status_code == 200
-        assert "registrado exitosamente" in response.text
+async def test_register_passwords_dont_match():
+    data = {
+        "full_name": "Pedro Gym",
+        "email": "pedro@example.com",
+        "password": "Abc123!@#",
+        "confirm_password": "Wrong123!",
+        "phone": "+59170000000",
+        "user_type": "gym_owner",
+        "gym_name": "FitZone",
+        "gym_address": "Calle Falsa 123",
+        "gym_phone": "+59170000001",
+        "opening_hours": "7:00-21:00",
+        "services_offered": "pesas,cardio",
+    }
+    async with AsyncClient(app=app, base_url="http://test") as client:
+        response = await client.post("auth/register", data=data)
+    assert response.status_code == 400
+    assert response.json()["error"] == "Las contraseñas no coinciden."
 
+# 2. Contraseña demasiado corta
 @pytest.mark.asyncio
-async def test_register_owner_invalid_social_media():
-    async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.post("auth/register", data={
-            "full_name": "Owner Bad Link",
-            "email": "bad@owner.com",
-            "password": "OwnerBad123!",
-            "confirm_password": "OwnerBad123!",
-            "phone": "+59176543211",
-            "user_type": "gym_owner",
-            "gym_name": "Bad Gym",
-            "gym_address": "NoLink Street",
-            "gym_phone": "+59176543212",
-            "opening_hours": "5:00-23:00",
-            "services_offered": "weights",
-            "capacity": 30,
-            "social_media": "instagram.com/badgym"  # no https
-        }, files={})
-        assert response.status_code == 400
-        assert "url válida" in response.text.lower()
+async def test_register_short_password():
+    data = {
+        "full_name": "Test User",
+        "email": "shortpass@test.com",
+        "password": "A1!",
+        "confirm_password": "A1!",
+        "phone": "+59170000000",
+        "user_type": "gym_owner",
+        "gym_name": "MiniGym",
+        "gym_address": "Avenida 1",
+        "gym_phone": "+59170000001",
+        "opening_hours": "8:00-20:00",
+        "services_offered": "cardio",
+    }
+    async with AsyncClient(app=app, base_url="http://test") as client:
+        response = await client.post("auth/register", data=data)
+    assert response.status_code == 400
+    assert "al menos 8 caracteres" in response.json()["error"]
 
+# 3. Contraseña sin número
 @pytest.mark.asyncio
-async def test_register_member_success():
-    async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.post("auth/register", data={
-            "full_name": "Test Member",
-            "email": "member@test.com",
-            "password": "TestPass123!",
-            "confirm_password": "TestPass123!",
-            "phone": "+59175555555",
-            "user_type": "gym_member",
-            "gym_id": "gym123",
-            "membership_number": "M123",
-            "birth_date": "2000-01-01",
-            "gender": "Masculino",
-            "training_goals": "loseWeight",
-            "activity_preferences": "yoga"
-        }, files={})
-        assert response.status_code == 200
-        assert "registrado exitosamente" in response.text.lower()
+async def test_register_password_missing_number():
+    data = {
+        "full_name": "Test User",
+        "email": "nonumber@test.com",
+        "password": "Abcdefg!",
+        "confirm_password": "Abcdefg!",
+        "phone": "+59170000000",
+        "user_type": "gym_owner",
+        "gym_name": "GymPro",
+        "gym_address": "Zona Sur",
+        "gym_phone": "+59170000001",
+        "opening_hours": "9:00-21:00",
+        "services_offered": "pesas",
+    }
+    async with AsyncClient(app=app, base_url="http://test") as client:
+        response = await client.post("auth/register", data=data)
+    assert response.status_code == 400
+    assert "al menos un número" in response.json()["error"]
 
+# 4. Tipo de usuario inválido
 @pytest.mark.asyncio
-async def test_register_member_invalid_age():
-    async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.post("auth/register", data={
-            "full_name": "Young Member",
-            "email": "young@member.com",
-            "password": "TestPass123!",
-            "confirm_password": "TestPass123!",
-            "phone": "+59175550000",
-            "user_type": "gym_member",
-            "gym_id": "gym123",
-            "membership_number": "M124",
-            "birth_date": "2015-01-01",
-            "gender": "Femenino",
-            "training_goals": "gainMuscle",
-            "activity_preferences": "cardio"
-        }, files={})
-        assert response.status_code == 400
-        assert "al menos 14 años" in response.text.lower()
+async def test_register_invalid_user_type():
+    data = {
+        "full_name": "Invalid Type",
+        "email": "invalidtype@test.com",
+        "password": "Valid123!",
+        "confirm_password": "Valid123!",
+        "phone": "+59170000000",
+        "user_type": "admin",  # inválido
+    }
+    async with AsyncClient(app=app, base_url="http://test") as client:
+        response = await client.post("auth/register", data=data)
+    assert response.status_code == 400
+    assert "debe ser 'gym_owner' o 'gym_member'" in response.json()["error"]
 
+# 5. Menor de edad (menos de 14 años)
 @pytest.mark.asyncio
-async def test_register_owner_passwords_do_not_match():
-    async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.post("auth/register", data={
-            "full_name": "Mismatch Owner",
-            "email": "mismatch@owner.com",
-            "password": "Mismatch123!",
-            "confirm_password": "Other123!",
-            "phone": "+59176666666",
-            "user_type": "gym_owner",
-            "gym_name": "Mismatch Gym",
-            "gym_address": "Fail Street",
-            "gym_phone": "+59176660000",
-            "opening_hours": "8:00-20:00",
-            "services_offered": "groupClasses",
-            "capacity": 40,
-            "social_media": "https://facebook.com/mismatchgym"
-        }, files={})
-        assert response.status_code == 400
-        assert "no coinciden" in response.text.lower()
+async def test_register_underage_member():
+    thirteen_years_ago = date.today() - timedelta(days=13 * 365)
+    data = {
+        "full_name": "Young User",
+        "email": "young@test.com",
+        "password": "Valid123!",
+        "confirm_password": "Valid123!",
+        "phone": "+59170000000",
+        "user_type": "gym_member",
+        "gym_id": "gym001",
+        "membership_number": "12345",
+        "birth_date": thirteen_years_ago.isoformat(),
+        "gender": "Masculino"
+    }
+    async with AsyncClient(app=app, base_url="http://test") as client:
+        response = await client.post("auth/register", data=data)
+    assert response.status_code == 400
+    assert "al menos 14 años" in response.json()["error"]

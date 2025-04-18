@@ -168,6 +168,6 @@ async def register_user(
         return RegisterResponse(message=result["message"], uid=result["uid"])
 
     except Exception as e:
-        print("🚨 Error durante el registro de usuario:")
+        print("Error durante el registro de usuario:")
         traceback.print_exc()  # Imprime el traceback completo
         return error_response(str(e), 500)

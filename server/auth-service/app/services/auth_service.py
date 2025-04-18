@@ -1,6 +1,5 @@
 from fastapi import HTTPException, Request
 from app.utils.firebase_config import db
-from keycloak import KeycloakAdmin, KeycloakOpenID
 from app.utils.keycloak_config import keycloak_openid
 
 class AuthService:

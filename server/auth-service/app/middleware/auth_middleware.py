@@ -1,7 +1,6 @@
 from starlette.middleware.base import BaseHTTPMiddleware
 from fastapi import Request
 from fastapi.responses import JSONResponse
-from keycloak import KeycloakOpenID
 from app.utils.keycloak_config import keycloak_openid
 import logging
 
