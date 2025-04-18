@@ -12,4 +12,4 @@ class Promotion(BaseModel):
     applicable_to: str = Field(..., description="A quién aplica la promoción (all_users, new_users, loyal_users, specific_plan)")
     auto_apply: bool = Field(..., description="Indica si la promoción se aplica automáticamente o requiere un código")
     promo_code: Optional[str] = Field(None, description="Código de promoción, si aplica")
-    status: str = Field("active", description="Estado de la promoción (active, inactive)")
+    status: bool = Field("true", description="Estado de la promoción (active, inactive)")

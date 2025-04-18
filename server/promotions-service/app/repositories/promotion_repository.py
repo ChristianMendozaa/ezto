@@ -20,8 +20,6 @@ class PromotionRepository:
 
             # Convertir DTO a diccionario correctamente
             promotion_data = promotion.model_dump()
-
-            # Agregar ID generado por Firestore
             promotion_data["id"] = ref.id
 
             # Convertir fechas a formato ISO-8601 antes de enviarlas a Firestore
@@ -50,7 +48,6 @@ class PromotionRepository:
             logger.error(f"❌ Error registrando promoción: {str(e)}")
             return StandardResponse(status="error", message=f"Error registrando la promoción: {str(e)}").model_dump()
 
-    @staticmethod
     @staticmethod
     async def get_all_promotions():
         try:
@@ -112,14 +109,20 @@ class PromotionRepository:
             loop = asyncio.get_running_loop()
             ref = db.collection("promotions").document(promotion_id)
 
-            # Validar si la promoción existe antes de eliminar
             doc = await loop.run_in_executor(None, lambda: ref.get())
             if not doc.exists:
-                return StandardResponse(status="error", message="La promoción no existe.").model_dump()
+                return StandardResponse(
+                    status="error",
+                    message="Promoción no encontrada",
+                    data=None
+                ).model_dump()
 
             await loop.run_in_executor(None, lambda: ref.delete())
 
-            return StandardResponse(status="success", message="Promoción eliminada exitosamente").model_dump()
+            return StandardResponse(
+                status="success",
+                message="Promoción eliminada exitosamente"
+            ).model_dump()
 
         except FirebaseError as e:
             logger.error(f"❌ Firebase Error: {str(e)}")
@@ -127,3 +130,40 @@ class PromotionRepository:
         except Exception as e:
             logger.error(f"❌ Error eliminando la promoción: {str(e)}")
             return StandardResponse(status="error", message=f"Error eliminando la promoción: {str(e)}").model_dump()
+
+    @staticmethod
+    async def get_promotion_by_id(promotion_id: str):
+        try:
+            loop = asyncio.get_running_loop()
+            ref = db.collection("promotions").document(promotion_id)
+
+            doc = await loop.run_in_executor(None, lambda: ref.get())
+
+            if not doc.exists:
+                return StandardResponse(
+                    status="error",
+                    message=f"La promoción con ID '{promotion_id}' no existe.",
+                    data=None
+                ).model_dump()
+
+            promotion_data = doc.to_dict()
+
+            return StandardResponse(
+                status="success",
+                message="Promoción encontrada",
+                data=promotion_data
+            ).model_dump()
+
+        except FirebaseError as e:
+            logger.error(f"❌ Firebase Error: {str(e)}")
+            return StandardResponse(
+                status="error",
+                message="Error al conectar con Firestore."
+            ).model_dump()
+
+        except Exception as e:
+            logger.error(f"❌ Error obteniendo promoción: {str(e)}")
+            return StandardResponse(
+                status="error",
+                message=f"Error obteniendo promoción: {str(e)}"
+            ).model_dump()

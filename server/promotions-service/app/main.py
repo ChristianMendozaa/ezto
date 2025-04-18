@@ -1,11 +1,14 @@
 # main.py (Microservicio de promociones)
-from fastapi import FastAPI, Request, Depends
+from fastapi import FastAPI, Request, Depends, HTTPException, status
+
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from app.middleware.auth_middleware import AuthMiddleware
 from app.middleware.rate_limit_middleware import RateLimitMiddleware
 from app.controllers.promotion_controller import router as promotion_router  # Importar el router de promociones
+from fastapi.exceptions import RequestValidationError
+from app.utils.exception_handlers import global_exception_dispatcher, request_validation_exception_handler
 
 app = FastAPI(
     title="Gestión de Promociones - Plataforma EzTo",
@@ -74,6 +77,9 @@ app.add_middleware(
     TrustedHostMiddleware,
     allowed_hosts=["*"],
 )
+# Registro de manejadores de excepciones personalizados
+app.add_exception_handler(RequestValidationError, request_validation_exception_handler)
+app.add_exception_handler(Exception, global_exception_dispatcher)
 
-# Inclusión de routers con prefijos y tags
-app.include_router(promotion_router, prefix="/promotions", tags=["Promociones"])  # Aquí añades el router de promociones
+# Incluir el router de promociones
+app.include_router(promotion_router, prefix="/promotions", tags=["Promociones"])

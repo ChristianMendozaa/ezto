@@ -4,8 +4,8 @@ from app.models.dtos.promotion_dto import PromotionDTO
 #para el repositoru
 class StandardResponse(BaseModel):
     status: str  # "success" o "error"
-    message: Optional[str] = None  # Mensaje opcional
-    data: Optional[Any] = None  # Datos opcionales (puede ser cualquier tipo)
+    message: Optional[str] = None 
+    data: Optional[Any] = None 
 
 class PromotionsResponse(BaseModel):
     status: str

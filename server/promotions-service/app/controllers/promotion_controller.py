@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from app.models.dtos.promotion_dto import PromotionDTO
 from app.services.promotion_service import PromotionService
-from app.utils.response_standardization import SuccessResponse, ErrorResponse
+from app.utils.response_standardization import SuccessResponse, ErrorResponse, StandardResponse
 import logging
 
 router = APIRouter()
@@ -17,13 +17,13 @@ async def list_promotions():
         raise HTTPException(status_code=500, detail=response.dict())
     return response
 
-@router.post("/create", tags=["Promociones"], response_model=SuccessResponse)
+@router.post("/create", response_model=StandardResponse)
 async def create_promotion(promotion: PromotionDTO):
     """Crea una nueva promoción en la plataforma."""
-    response = await PromotionService.create_promotion(promotion)
-    if response.status == "error":
-        raise HTTPException(status_code=400, detail=response.dict())
-    return response
+    try:
+        return await PromotionService.create_promotion(promotion)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @router.put("/update/{promotion_id}", tags=["Promociones"], response_model=SuccessResponse)
 async def update_promotion(promotion_id: str, promotion: PromotionDTO):
@@ -39,4 +39,13 @@ async def delete_promotion(promotion_id: str):
     response = await PromotionService.delete_promotion(promotion_id)
     if response.status == "error":
         raise HTTPException(status_code=400, detail=response.dict())
+    return response
+
+@router.get("/{promotion_id}", tags=["Promociones"], response_model=SuccessResponse)
+async def get_promotion_by_id(promotion_id: str):
+    """Obtiene los detalles de una promoción por su ID."""
+    logger.debug(f"Recibida petición GET /promotions/{promotion_id}")
+    response = await PromotionService.get_promotion_by_id(promotion_id)
+    if response.status == "error":
+        raise HTTPException(status_code=404, detail=response.dict())
     return response

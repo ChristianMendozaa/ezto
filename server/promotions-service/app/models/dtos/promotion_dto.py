@@ -1,8 +1,9 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, constr, conint, validator
 from typing import Optional
 from datetime import date
 from enum import Enum
 
+# 🔹 Definición de Enum para valores restringidos
 class DiscountType(str, Enum):
     percentage = "percentage"
     fixed = "fixed"
@@ -14,21 +15,26 @@ class ApplicableTo(str, Enum):
     loyal_users = "loyal_users"
     specific_plan = "specific_plan"
 
-class Status(str, Enum):
-    active = "active"
-    inactive = "inactive"
-
+# 🔹 Definición del DTO con validaciones estrictas
 class PromotionDTO(BaseModel):
-    name: str = Field(..., description="Nombre de la promoción")
-    description: str = Field(..., description="Descripción de la promoción")
+    name: constr(min_length=3, max_length=50) = Field(..., description="Nombre de la promoción")
+    description: constr(min_length=10, max_length=255) = Field(..., description="Descripción de la promoción")
     start_date: date = Field(..., description="Fecha de inicio en formato ISO (YYYY-MM-DD)")
     end_date: date = Field(..., description="Fecha de finalización en formato ISO (YYYY-MM-DD)")
     discount_type: DiscountType = Field(..., description="Tipo de descuento válido")
-    discount_value: int = Field(..., description="Valor del descuento")
+    discount_value: conint(gt=0) = Field(..., description="Valor del descuento, debe ser mayor a 0")
     applicable_to: ApplicableTo = Field(..., description="A quién aplica la promoción")
     auto_apply: bool = Field(..., description="Indica si la promoción se aplica automáticamente")
-    promo_code: Optional[str] = Field(None, description="Código de promoción, si aplica")
-    status: Status = Field(default=Status.active, description="Estado de la promoción")
+    promo_code: Optional[constr(min_length=3, max_length=20)] = Field(None, description="Código de promoción opcional")
+    status: bool = Field(..., description="Estado de la promoción")
+
+    @validator("end_date")
+    def validate_end_date(cls, end_date, values):
+        """Valida que la fecha de finalización sea posterior a la de inicio."""
+        start_date = values.get("start_date")
+        if start_date and end_date <= start_date:
+            raise ValueError("La fecha de finalización debe ser posterior a la fecha de inicio.")
+        return end_date
 
     class Config:
         schema_extra = {
@@ -42,6 +48,6 @@ class PromotionDTO(BaseModel):
                 "applicable_to": "new_users",
                 "auto_apply": False,
                 "promo_code": "VERANO10",
-                "status": "active"
+                "status": True,
             }
         }
