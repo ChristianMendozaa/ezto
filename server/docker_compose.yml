@@ -1,11 +1,17 @@
-
+version: "3.9"
 services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:21.1.1
+    command: ["start-dev"]
+    ports:
+      - "8080:8080"
+
   consul:
     image: hashicorp/consul:latest
     command: agent -dev -client=0.0.0.0
     ports:
       - "8500:8500"
-      
+
   auth-service:
     build:
       context: ./auth-service
@@ -19,17 +25,18 @@ services:
     depends_on:
       - consul
 
-  shop-service:
+  inventory-service:
     build:
-      context: ./shop-service
+      context: ./inventory-service
       dockerfile: Dockerfile
     ports:
-      - "8001:8001"
+      - "8002:8002"
     environment:
       - ENV=development
-      - PORT=8001
+      - PORT=8002
       - CONSUL_ADDR=http://consul:8500
     volumes:
-      - ./shop-service:/app
+      - ./inventory-service:/app
     depends_on:
       - consul
+      - keycloak
