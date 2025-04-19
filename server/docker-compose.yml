@@ -1,0 +1,40 @@
+version: "3.9"
+
+services:
+  promotions-service:
+    build:
+      context: ./promotions-service
+      dockerfile: Dockerfile
+    container_name: promotions-service
+    ports:
+      - "8001:8000"  # host:container
+    volumes:
+      - ./promotions-service:/app
+    environment:
+      - ENV=development
+    networks:
+      - ezto
+    env_file:
+      - .env
+
+
+  user-membership-service:
+    build:
+      context: ./usermembership-service
+      dockerfile: Dockerfile
+    container_name: usermembership-service
+    ports:
+      - "8002:8000"
+    volumes:
+      - ./usermembership-service:/app
+    environment:
+      - ENV=development
+    networks:
+      - ezto
+    env_file:
+      - .env
+
+
+networks:
+  ezto:
+    driver: bridge
