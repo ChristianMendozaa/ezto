@@ -9,6 +9,7 @@ from app.middleware.rate_limit_middleware import RateLimitMiddleware
 from app.controllers.promotion_controller import router as promotion_router  # Importar el router de promociones
 from fastapi.exceptions import RequestValidationError
 from app.utils.exception_handlers import global_exception_dispatcher, request_validation_exception_handler
+from app.utils.consul_register import register_service_in_consul
 
 app = FastAPI(
     title="Gestión de Promociones - Plataforma EzTo",
@@ -83,3 +84,11 @@ app.add_exception_handler(Exception, global_exception_dispatcher)
 
 # Incluir el router de promociones
 app.include_router(promotion_router, prefix="/promotions", tags=["Promociones"])
+
+@app.get("/health", tags=["Monitoreo"])
+def health_check():
+    return {"status": "ok"}
+
+@app.on_event("startup")
+async def startup_event():
+    register_service_in_consul(service_name="promotions-service", service_port=8001)

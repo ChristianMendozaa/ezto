@@ -21,7 +21,7 @@ export function UserNav() {
 
   const handleLogout = async () => {
     await logout();
-    router.push("/login"); // 🔄 Redirige al login tras cerrar sesión
+    router.push("/login"); // 🔄 Redirige al login tras cerrar sesión 
   };
 
   return (

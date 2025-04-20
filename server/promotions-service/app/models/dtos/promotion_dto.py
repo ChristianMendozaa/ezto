@@ -3,7 +3,7 @@ from typing import Optional
 from datetime import date
 from enum import Enum
 
-# 🔹 Definición de Enum para valores restringidos
+# Enums
 class DiscountType(str, Enum):
     percentage = "percentage"
     fixed = "fixed"
@@ -15,8 +15,9 @@ class ApplicableTo(str, Enum):
     loyal_users = "loyal_users"
     specific_plan = "specific_plan"
 
-# 🔹 Definición del DTO con validaciones estrictas
+# DTO principal
 class PromotionDTO(BaseModel):
+    id: Optional[str] = Field(None, description="ID de la promoción")
     name: constr(min_length=3, max_length=50) = Field(..., description="Nombre de la promoción")
     description: constr(min_length=10, max_length=255) = Field(..., description="Descripción de la promoción")
     start_date: date = Field(..., description="Fecha de inicio en formato ISO (YYYY-MM-DD)")
@@ -28,16 +29,8 @@ class PromotionDTO(BaseModel):
     promo_code: Optional[constr(min_length=3, max_length=20)] = Field(None, description="Código de promoción opcional")
     status: bool = Field(..., description="Estado de la promoción")
 
-    @validator("end_date")
-    def validate_end_date(cls, end_date, values):
-        """Valida que la fecha de finalización sea posterior a la de inicio."""
-        start_date = values.get("start_date")
-        if start_date and end_date <= start_date:
-            raise ValueError("La fecha de finalización debe ser posterior a la fecha de inicio.")
-        return end_date
-
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "name": "Promo Especial 10%",
                 "description": "Descuento del 10% en todas las membresías",
@@ -48,6 +41,29 @@ class PromotionDTO(BaseModel):
                 "applicable_to": "new_users",
                 "auto_apply": False,
                 "promo_code": "VERANO10",
-                "status": True,
+                "status": True
             }
         }
+
+    @validator("end_date")
+    def validate_end_date(cls, end_date, values):
+        start_date = values.get("start_date")
+        if start_date and end_date <= start_date:
+            raise ValueError("La fecha de finalización debe ser posterior a la fecha de inicio.")
+        return end_date
+
+    def to_entity(self, entity_id: Optional[str] = None) -> "PromotionEntity":
+        from app.models.promotion_model import PromotionEntity
+        return PromotionEntity(
+            id=self.id if hasattr(self, "id") else entity_id,
+            name=self.name,
+            description=self.description,
+            start_date=self.start_date,
+            end_date=self.end_date,
+            discount_type=self.discount_type,
+            discount_value=self.discount_value,
+            applicable_to=self.applicable_to,
+            auto_apply=self.auto_apply,
+            promo_code=self.promo_code,
+            status=self.status
+        )

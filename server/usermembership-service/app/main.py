@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.exceptions import RequestValidationError
+from app.utils.consul_register import register_service_in_consul
 
 # Middlewares personalizados
 from app.middleware.auth_middleware import AuthMiddleware
@@ -84,5 +85,12 @@ app.add_middleware(
 app.add_exception_handler(RequestValidationError, request_validation_exception_handler)
 app.add_exception_handler(Exception, global_exception_dispatcher)
 
+@app.get("/health", tags=["Monitoreo"])
+def health_check():
+    return {"status": "ok"}
 # 📌 Rutas del microservicio
 app.include_router(user_membership_router, prefix="/usermemberships", tags=["Membresías"])
+
+@app.on_event("startup")
+async def startup_event():
+    register_service_in_consul(service_name="usermembership-service", service_port=8002)

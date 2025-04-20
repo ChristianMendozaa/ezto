@@ -15,7 +15,7 @@ import { LanguageToggle } from "@/components/language-toggle"
 import { Dumbbell } from "lucide-react"
 import { auth } from "@/lib/firebaseConfig";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { useAuth } from "@/lib/auth-context"; // 🔥 Importamos el AuthContext
+import { useAuth } from "@/lib/auth-context";
 
 export default function LoginPage() {
   const { t } = useLanguage()
@@ -23,82 +23,65 @@ export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false);
-  const { setUser } = useAuth(); // 🔥 Usamos AuthContext para actualizar el usuario
+  const { setUser } = useAuth(); //  Usamos AuthContext para actualizar el usuario
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
+  
     if (!email || !password) {
       alert("Por favor, completa todos los campos.");
       return;
     }
-
+  
     setLoading(true);
+  
     try {
-
-      // 🔥 1. Borrar cualquier cookie de sesión previa antes de autenticarse
-      await fetch(process.env.NEXT_PUBLIC_BACKEND_URL + "/auth/logout", {
+      // 🔄 Limpiar cookies previas
+      await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/logout`, {
         method: "POST",
         credentials: "include",
       });
-
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      console.log(userCredential);
-      const token = await userCredential.user.getIdToken(true);
-      console.log(token)
-      console.log(Math.floor(Date.now() / 1000)); // Muestra la hora en segundos desde UNIX epoch
-      if (auth.currentUser) {
-        auth.currentUser.getIdTokenResult()
-          .then((idTokenResult) => {
-            console.log("Hora de emisión del token (iat):", idTokenResult.claims.iat);
-            console.log("Hora actual en el cliente:", Math.floor(Date.now() / 1000));
-          })
-          .catch((error) => {
-            console.error("Error obteniendo el token:", error);
-          });
-      } else {
-        console.error("No hay usuario autenticado.");
-      }
-
-
-      const response = await fetch(process.env.NEXT_PUBLIC_BACKEND_URL + "/auth/login", {
+  
+      // ✅ Login con email y password directamente al backend
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/login`, {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        credentials: "include",
+        credentials: "include", // ⚠️ Muy importante para que el backend devuelva la cookie
+        body: JSON.stringify({
+          email,
+          password,
+        }),
       });
-
+  
       if (!response.ok) {
         throw new Error("Error en la autenticación. Revisa tu usuario o contraseña.");
       }
-
+  
       const data = await response.json();
-
-      // 🔥 Actualizar el estado global del usuario
+  
+      // ✅ Actualizar el estado global del usuario
       setUser(data);
-
-      // 🔄 Redirigir según el rol
+  
+      // ✅ Redirigir según rol
       if (data.role === "gym_owner") {
         router.replace("/dashboard");
       } else {
         router.replace("/client");
       }
-
+  
     } catch (error: any) {
-      
       alert(error.message);
-      // 🔥 1. Borrar cualquier cookie de sesión previa antes de autenticarse
-      await fetch(process.env.NEXT_PUBLIC_BACKEND_URL + "/auth/logout", {
+      await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/logout`, {
         method: "POST",
         credentials: "include",
       });
-
     } finally {
       setLoading(false);
     }
   };
+  
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-100 dark:bg-gray-900">

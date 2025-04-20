@@ -1,4 +1,5 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Body
+from typing import Dict, Any
 from app.models.dtos.promotion_dto import PromotionDTO
 from app.services.promotion_service import PromotionService
 from app.utils.response_standardization import SuccessResponse, ErrorResponse, StandardResponse
@@ -25,10 +26,13 @@ async def create_promotion(promotion: PromotionDTO):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.put("/update/{promotion_id}", tags=["Promociones"], response_model=SuccessResponse)
-async def update_promotion(promotion_id: str, promotion: PromotionDTO):
-    """Actualiza una promoción en la plataforma."""
-    response = await PromotionService.update_promotion(promotion_id, promotion)
+@router.patch("/update/{promotion_id}", tags=["Promociones"], response_model=SuccessResponse)
+async def update_promotion_partial(promotion_id: str, updates: Dict[str, Any] = Body(...)):
+    """
+    Actualiza parcialmente una promoción por su ID (por ejemplo, solo el estado, descripción o fecha de fin).
+    """
+    logger.debug(f"Recibida petición PATCH /promotions/update/{promotion_id} con cambios: {updates}")
+    response = await PromotionService.update_promotion_partial(promotion_id, updates)
     if response.status == "error":
         raise HTTPException(status_code=400, detail=response.dict())
     return response

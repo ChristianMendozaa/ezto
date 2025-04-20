@@ -25,7 +25,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const res = await fetch("/api/auth/me", { credentials: "include" });
+        const res = await fetch(process.env.NEXT_PUBLIC_BACKEND_URL +"/auth/me", { credentials: "include" });
 
         if (!res.ok) throw new Error("No autenticado");
         
@@ -53,7 +53,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, [loading, user, router]);
 
   const logout = async () => {
-    await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+    //  1. Borrar cualquier cookie de sesión previa antes de autenticarse
+    await fetch(process.env.NEXT_PUBLIC_BACKEND_URL + "/auth/logout", {
+      method: "POST",
+      credentials: "include",
+    });
     setUser(null);
     router.replace("/login");
   };

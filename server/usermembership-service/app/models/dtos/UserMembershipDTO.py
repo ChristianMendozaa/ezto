@@ -21,7 +21,7 @@ class UserMembershipDTO(BaseModel):
     auto_renew: bool = Field(..., description="Indica si la membresía se renovará automáticamente")
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "user_id": "user001",
                 "plan_id": "plan_mensual",

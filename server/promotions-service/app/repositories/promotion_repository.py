@@ -1,107 +1,65 @@
 from firebase_admin import firestore
-from app.models.dtos.promotion_dto import PromotionDTO
+from app.models.promotion_model import PromotionEntity
+from datetime import datetime
 from app.utils.firebase_config import db
-from app.utils.responses import StandardResponse, PromotionsResponse
 import asyncio
 import logging
-from datetime import datetime
-from datetime import date
-from firebase_admin.exceptions import FirebaseError
 
-logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 class PromotionRepository:
+
     @staticmethod
-    async def create_promotion(promotion: PromotionDTO):
+    async def create_promotion(entity: PromotionEntity):
         try:
             loop = asyncio.get_running_loop()
             ref = db.collection("promotions").document()
 
-            # Convertir DTO a diccionario correctamente
-            promotion_data = promotion.model_dump()
-            promotion_data["id"] = ref.id
+            entity.id = ref.id
+            data = entity.to_dict()
 
-            # Convertir fechas a formato ISO-8601 antes de enviarlas a Firestore
-            if isinstance(promotion_data["start_date"], (datetime, date)):
-                promotion_data["start_date"] = promotion_data["start_date"].isoformat()
-            if isinstance(promotion_data["end_date"], (datetime, date)):
-                promotion_data["end_date"] = promotion_data["end_date"].isoformat()
+            await loop.run_in_executor(None, lambda: ref.set(data))
+            return {
+                "status": "success",
+                "data": data
+            }
 
-
-            # Eliminar claves con valores `None`
-            promotion_data = {k: v for k, v in promotion_data.items() if v is not None}
-
-            # Guardar en Firestore
-            await loop.run_in_executor(None, lambda: ref.set(promotion_data))
-
-            return StandardResponse(
-                status="success",
-                message="Promoción creada exitosamente",
-                data=promotion_data if promotion_data else None
-            ).model_dump(exclude_none=True)
-
-        except FirebaseError as e:
-            logger.error(f"❌ Firebase Error: {str(e)}")
-            return StandardResponse(status="error", message="Error al conectar con Firestore.").model_dump()
         except Exception as e:
-            logger.error(f"❌ Error registrando promoción: {str(e)}")
-            return StandardResponse(status="error", message=f"Error registrando la promoción: {str(e)}").model_dump()
+            logger.error(f"❌ Error creando promoción: {e}")
+            return {
+                "status": "error",
+                "message": str(e)
+            }
 
     @staticmethod
     async def get_all_promotions():
         try:
             loop = asyncio.get_running_loop()
-            docs = await loop.run_in_executor(None, lambda: db.collection("promotions").stream())
+            docs = await loop.run_in_executor(None, lambda: list(db.collection("promotions").stream()))
+            promotions = [doc.to_dict() for doc in docs]
 
-            promotions = [PromotionDTO(**doc.to_dict()) for doc in docs]
-
-            if not promotions:
-                return PromotionsResponse(status="success", message="No hay promociones registradas.", promotions=[]).model_dump()
-
-            return PromotionsResponse(status="success", promotions=promotions).model_dump()
+            return {"status": "success", "data": promotions}
 
         except Exception as e:
-            return PromotionsResponse(status="error", message=f"Error obteniendo promociones: {str(e)}").model_dump()
-
+            logger.error(f"❌ Error obteniendo promociones: {e}")
+            return {"status": "error", "message": str(e)}
 
     @staticmethod
-    async def update_promotion(promotion_id: str, promotion: PromotionDTO):
+    async def get_promotion_by_id(promotion_id: str):
         try:
             loop = asyncio.get_running_loop()
             ref = db.collection("promotions").document(promotion_id)
 
-            # Convertir DTO a diccionario correctamente
-            promotion_data = promotion.model_dump()
-
-            # Convertir fechas a formato ISO-8601
-            if "start_date" in promotion_data and promotion_data["start_date"]:
-                promotion_data["start_date"] = promotion_data["start_date"].isoformat()
-            if "end_date" in promotion_data and promotion_data["end_date"]:
-                promotion_data["end_date"] = promotion_data["end_date"].isoformat()
-
-            # Eliminar claves con valores `None`
-            promotion_data = {k: v for k, v in promotion_data.items() if v is not None}
-
-            # Validar si la promoción existe antes de actualizar
             doc = await loop.run_in_executor(None, lambda: ref.get())
             if not doc.exists:
-                return StandardResponse(status="error", message="La promoción no existe.").model_dump()
+                return {"status": "error", "message": "Promoción no encontrada"}
 
-            await loop.run_in_executor(None, lambda: ref.update(promotion_data))
+            data = doc.to_dict()
+            return {"status": "success", "data": data}
 
-            return StandardResponse(
-                status="success",
-                message="Promoción actualizada exitosamente",
-                data=promotion_data if promotion_data else None
-            ).model_dump(exclude_none=True)
-
-        except FirebaseError as e:
-            logger.error(f"❌ Firebase Error: {str(e)}")
-            return StandardResponse(status="error", message="Error al conectar con Firestore.").model_dump()
         except Exception as e:
-            logger.error(f"❌ Error actualizando la promoción: {str(e)}")
-            return StandardResponse(status="error", message=f"Error actualizando la promoción: {str(e)}").model_dump()
+            logger.error(f"❌ Error obteniendo promoción: {e}")
+            return {"status": "error", "message": str(e)}
 
     @staticmethod
     async def delete_promotion(promotion_id: str):
@@ -111,59 +69,89 @@ class PromotionRepository:
 
             doc = await loop.run_in_executor(None, lambda: ref.get())
             if not doc.exists:
-                return StandardResponse(
-                    status="error",
-                    message="Promoción no encontrada",
-                    data=None
-                ).model_dump()
+                return {"status": "error", "message": "Promoción no encontrada"}
 
             await loop.run_in_executor(None, lambda: ref.delete())
+            return {"status": "success"}
 
-            return StandardResponse(
-                status="success",
-                message="Promoción eliminada exitosamente"
-            ).model_dump()
-
-        except FirebaseError as e:
-            logger.error(f"❌ Firebase Error: {str(e)}")
-            return StandardResponse(status="error", message="Error al conectar con Firestore.").model_dump()
         except Exception as e:
-            logger.error(f"❌ Error eliminando la promoción: {str(e)}")
-            return StandardResponse(status="error", message=f"Error eliminando la promoción: {str(e)}").model_dump()
+            logger.error(f"❌ Error eliminando promoción: {e}")
+            return {"status": "error", "message": str(e)}
 
     @staticmethod
-    async def get_promotion_by_id(promotion_id: str):
+    async def update_promotion(promotion_id: str, entity: PromotionEntity):
         try:
             loop = asyncio.get_running_loop()
             ref = db.collection("promotions").document(promotion_id)
 
+            data = entity.to_dict()
             doc = await loop.run_in_executor(None, lambda: ref.get())
-
             if not doc.exists:
-                return StandardResponse(
-                    status="error",
-                    message=f"La promoción con ID '{promotion_id}' no existe.",
-                    data=None
-                ).model_dump()
+                return {"status": "error", "message": "Promoción no encontrada"}
 
-            promotion_data = doc.to_dict()
+            await loop.run_in_executor(None, lambda: ref.update(data))
 
-            return StandardResponse(
-                status="success",
-                message="Promoción encontrada",
-                data=promotion_data
-            ).model_dump()
-
-        except FirebaseError as e:
-            logger.error(f"❌ Firebase Error: {str(e)}")
-            return StandardResponse(
-                status="error",
-                message="Error al conectar con Firestore."
-            ).model_dump()
+            updated = await loop.run_in_executor(None, lambda: ref.get())
+            return {
+                "status": "success",
+                "data": updated.to_dict()
+            }
 
         except Exception as e:
-            logger.error(f"❌ Error obteniendo promoción: {str(e)}")
-            return StandardResponse(
-                status="error",
-                message=f"Error obteniendo promoción: {str(e)}"
-            ).model_dump()
+            logger.error(f"❌ Error actualizando promoción: {e}")
+            return {"status": "error", "message": str(e)}
+
+    @staticmethod
+    async def update_promotion_partial(promotion_id: str, updates: dict):
+        try:
+            loop = asyncio.get_running_loop()
+            ref = db.collection("promotions").document(promotion_id)
+
+            # 🔍 Obtener documento actual
+            doc = await loop.run_in_executor(None, lambda: ref.get())
+            if not doc.exists:
+                return {"status": "error", "message": "Promoción no encontrada"}
+
+            current_data = doc.to_dict()
+
+            # 🔁 Preparar fechas
+            start_date = updates.get("start_date")
+            end_date = updates.get("end_date")
+
+            if start_date:
+                if isinstance(start_date, str):
+                    start_date = datetime.fromisoformat(start_date).date()
+                elif isinstance(start_date, datetime):
+                    start_date = start_date.date()
+                updates["start_date"] = start_date.isoformat()
+            else:
+                start_date = datetime.fromisoformat(current_data.get("start_date")).date()
+
+            if end_date:
+                if isinstance(end_date, str):
+                    end_date = datetime.fromisoformat(end_date).date()
+                elif isinstance(end_date, datetime):
+                    end_date = end_date.date()
+                updates["end_date"] = end_date.isoformat()
+            else:
+                end_date = datetime.fromisoformat(current_data.get("end_date")).date()
+
+            # ✅ Validar orden de fechas
+            if end_date <= start_date:
+                return {
+                    "status": "error",
+                    "message": "La fecha de finalización debe ser posterior a la fecha de inicio"
+                }
+
+            # 🔄 Aplicar actualización
+            await loop.run_in_executor(None, lambda: ref.update(updates))
+
+            updated = await loop.run_in_executor(None, lambda: ref.get())
+            return {
+                "status": "success",
+                "data": updated.to_dict()
+            }
+
+        except Exception as e:
+            logger.error(f"❌ Error actualizando promoción: {e}")
+            return {"status": "error", "message": str(e)}
