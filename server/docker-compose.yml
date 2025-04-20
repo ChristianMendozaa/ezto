@@ -61,7 +61,10 @@ services:
       context: ./promotions-service
       dockerfile: Dockerfile
     volumes:
-      - ./promotions-service:/app
+    - ./promotions-service:/app
+
+    ports:
+      - "8001:8001"
     command: uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
     environment:
       - ENV=development
@@ -87,7 +90,9 @@ services:
       dockerfile: Dockerfile
     volumes:
       - ./usermembership-service:/app
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8002 --reload
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8002 --
+    ports:
+      - "8002:8002"
     environment:
       - ENV=development
     labels:

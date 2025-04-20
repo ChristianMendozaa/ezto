@@ -1,5 +1,6 @@
 # main.py (Microservicio de membresías activas)
 from fastapi import FastAPI, Request
+from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
@@ -16,10 +17,16 @@ from app.controllers.usermembership_controller import router as user_membership_
 # Manejo de errores
 from app.utils.exception_handlers import global_exception_dispatcher, request_validation_exception_handler
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    register_service_in_consul("usermembership-service", 8002)
+    yield
 app = FastAPI(
     title="Gestión de Membresías Activas - Plataforma EzTo",
     description="Microservicio para la gestión de membresías activas de los usuarios dentro del sistema EzTo.",
     version="1.0.0",
+    lifespan=lifespan,
     contact={
         "name": "Equipo EzTo",
         "url": "https://eztoplatform.com/contact",
@@ -90,7 +97,3 @@ def health_check():
     return {"status": "ok"}
 # 📌 Rutas del microservicio
 app.include_router(user_membership_router, prefix="/usermemberships", tags=["Membresías"])
-
-@app.on_event("startup")
-async def startup_event():
-    register_service_in_consul(service_name="usermembership-service", service_port=8002)

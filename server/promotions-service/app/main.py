@@ -2,6 +2,7 @@
 from fastapi import FastAPI, Request, Depends, HTTPException, status
 
 from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from app.middleware.auth_middleware import AuthMiddleware
@@ -11,11 +12,18 @@ from fastapi.exceptions import RequestValidationError
 from app.utils.exception_handlers import global_exception_dispatcher, request_validation_exception_handler
 from app.utils.consul_register import register_service_in_consul
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    register_service_in_consul("promotions-service", 8001)
+    yield
+
 app = FastAPI(
     title="Gestión de Promociones - Plataforma EzTo",
     description="Microservicio para la gestión de promociones dentro del sistema. "
                 ":)",
     version="1.0.0",
+    lifespan=lifespan,
     contact={
         "name": "Equipo EzTo",
         "url": "https://eztoplatform.com/contact",
@@ -88,7 +96,3 @@ app.include_router(promotion_router, prefix="/promotions", tags=["Promociones"])
 @app.get("/health", tags=["Monitoreo"])
 def health_check():
     return {"status": "ok"}
-
-@app.on_event("startup")
-async def startup_event():
-    register_service_in_consul(service_name="promotions-service", service_port=8001)
