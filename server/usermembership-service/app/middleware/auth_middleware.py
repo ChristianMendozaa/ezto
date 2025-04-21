@@ -1,29 +1,63 @@
 from starlette.middleware.base import BaseHTTPMiddleware
-from fastapi import Request, HTTPException
-from firebase_admin import auth
+from fastapi import Request
+from fastapi.responses import JSONResponse
+from app.utils.keycloak_config import keycloak_openid
+import logging
+
+logger = logging.getLogger(__name__)
+
+EXCLUDED_PATHS = ["/health"]
+
 
 class AuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
-        """
-        Middleware para autenticar usuarios mediante Firebase Authentication.
-        Extrae el token desde la cookie y lo verifica.
-        """
-        token = request.cookies.get("authToken")  # Intentar obtener la cookie
+        if request.url.path in EXCLUDED_PATHS:
+            return await call_next(request)
+
+        token = request.cookies.get("authToken")
 
         if not token:
-            token = request.headers.get("Cookie")  # Intentar obtenerla desde los headers
-
-            if token and "authToken=" in token:
-                token = token.split("authToken=")[-1].split(";")[0]  # Extraer el valor
-
+            cookie_header = request.headers.get("Cookie", "")
+            if "authToken=" in cookie_header:
+                token = cookie_header.split("authToken=")[-1].split(";")[0]
+        if not token:
+            print("HEADERS:", dict(request.headers))
+            auth_header = request.headers.get("Authorization")
+            if auth_header and auth_header.startswith("Bearer "):
+                token = auth_header.replace("Bearer ", "").strip()
 
         if not token:
-            return await call_next(request)  # No bloquear la solicitud
+            if any(request.url.path.startswith(path) for path in EXCLUDED_PATHS):
+                return await call_next(request)
+            return JSONResponse(
+                status_code=401,
+                content={"success": False, "data": None, "error": "Token no proporcionado"}
+            )
+
 
         try:
-            decoded_token = auth.verify_id_token(token)
-            request.state.user = decoded_token  # Guardar info del usuario en la solicitud
+            token_info = keycloak_openid.introspect(token)
+
+            if not token_info.get("active"):
+                raise Exception("Token inactivo")
+
+            # Guardamos los datos del token para su uso posterior
+            request.state.user = {
+                "user_id": token_info.get("sub"),
+                "email": token_info.get("email"),
+                "username": token_info.get("preferred_username"),
+                "role": token_info.get("user_type", "gym_member")
+            }
+
         except Exception as e:
-            raise HTTPException(status_code=401, detail="Token inválido o expirado")
+            logger.warning(f"Token inválido: {e}")
+            return JSONResponse(
+                status_code=401,
+                content={
+                    "success": False,
+                    "data": None,
+                    "error": "Token inválido o expirado"
+                }
+            )
 
         return await call_next(request)
