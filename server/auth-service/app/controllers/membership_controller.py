@@ -12,13 +12,13 @@ logger = logging.getLogger(__name__)
 @router.get("/", tags=["Planes de Membresía"])
 async def list_membership_plans():
     """Obtiene la lista de todos los planes de membresía disponibles."""
-    logger.debug("Recibida petición GET /membership_plans")  # 🚀 Ver si la petición llega
+    logger.debug("Recibida petición GET /membership_plans")  #  Ver si la petición llega
     try:
-        plans = await MembershipService.get_all_plans()  # ✅ CORRECTO
-        logger.debug(f"Planes obtenidos: {plans}")  # 🚀 Ver si Firestore devuelve datos
+        plans = await MembershipService.get_all_plans()  #  CORRECTO
+        logger.debug(f"Planes obtenidos: {plans}")  #  Ver si Firestore devuelve datos
         return [{"id": plan["id"], **plan} for plan in plans]
     except Exception as e:
-        logger.error(f"Error en GET /membership_plans: {str(e)}")  # ❌ Si algo falla
+        logger.error(f"Error en GET /membership_plans: {str(e)}")  #  Si algo falla
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post(
@@ -35,10 +35,11 @@ async def list_membership_plans():
 async def create_membership_plan(plan: MembershipPlan):
     """Crea un nuevo plan de membresía en la plataforma."""
     try:
+        log.console("probando")
         return await MembershipService.create_plan(plan)
     except Exception as e:
         logger.error(f"Error en POST /membership_plans/create: {str(e)}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.put(
     "/update/{plan_id}",

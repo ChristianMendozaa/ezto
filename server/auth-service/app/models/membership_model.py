@@ -9,6 +9,8 @@ class MembershipPlan(BaseModel):
     price: float = Field(..., title="Precio", description="Costo del plan de membresía.")
     duration_months: int = Field(..., title="Duración", description="Duración del plan en meses.")
     description: Optional[str] = Field(None, title="Descripción", description="Descripción opcional del plan de membresía.")
+    services_offered: Optional[list[str]] = Field(default=[], title="Servicios Ofrecidos", description="Lista de servicios incluidos en el plan.")
+    capacity: Optional[int] = Field(None, title="Capacidad", description="Número máximo de usuarios permitidos en el plan.")
 
 class MembershipAssignment(BaseModel):
     """
