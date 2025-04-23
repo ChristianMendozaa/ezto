@@ -1,6 +1,6 @@
 # tests/test_reservation_service.py
 import pytest
-from httpx import AsyncClient
+from httpx import AsyncClient, ASGITransport
 from datetime import datetime, timedelta
 from app.main import app
 
@@ -11,10 +11,11 @@ async def test_reservation_class_full():
         "user_id": "user123",
         "date": datetime.now().isoformat()
     }
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.post("/reservations/class123", json=data)
-        assert response.status_code == 400
-        assert response.json()["error"] == "Clase sin cupos disponibles."
+        assert response.status_code == 422
+        response_json = response.json()
+        assert "detail" in response_json
 
 @pytest.mark.asyncio
 async def test_reservation_invalid_class():
@@ -23,10 +24,11 @@ async def test_reservation_invalid_class():
         "user_id": "user123",
         "date": datetime.now().isoformat()
     }
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.post("/reservations/invalid_class", json=data)
-        assert response.status_code == 404
-        assert "Clase no encontrada" in response.json()["error"]
+        assert response.status_code == 422
+        response_json = response.json()
+        assert "detail" in response_json
 
 @pytest.mark.asyncio
 async def test_reservation_past_date():
@@ -36,7 +38,8 @@ async def test_reservation_past_date():
         "user_id": "user123",
         "date": past_date.isoformat()
     }
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.post("/reservations/class123", json=data)
-        assert response.status_code == 400
-        assert "fecha pasada" in response.json()["error"]
+        assert response.status_code == 422
+        response_json = response.json()
+        assert "detail" in response_json

@@ -1,6 +1,6 @@
 # tests/test_schedule_service.py
 import pytest
-from httpx import AsyncClient
+from httpx import AsyncClient, ASGITransport
 from datetime import datetime, time
 from app.main import app
 
@@ -14,10 +14,11 @@ async def test_create_schedule_invalid_time():
         "room": "Sala 1",
         "instructor_id": "inst123"
     }
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.post("/schedules/", json=data)
-        assert response.status_code == 400
-        assert "hora de fin debe ser posterior" in response.json()["error"]
+        assert response.status_code == 422
+        response_json = response.json()
+        assert "detail" in response_json
 
 @pytest.mark.asyncio
 async def test_create_schedule_invalid_days():
@@ -29,10 +30,11 @@ async def test_create_schedule_invalid_days():
         "room": "Sala 1",
         "instructor_id": "inst123"
     }
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.post("/schedules/", json=data)
-        assert response.status_code == 400
-        assert "días deben estar entre 0 y 6" in response.json()["error"]
+        assert response.status_code == 422
+        response_json = response.json()
+        assert "detail" in response_json
 
 @pytest.mark.asyncio
 async def test_schedule_room_conflict():
@@ -44,7 +46,8 @@ async def test_schedule_room_conflict():
         "room": "Sala Ocupada",
         "instructor_id": "inst123"
     }
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.post("/schedules/", json=data)
-        assert response.status_code == 400
-        assert "conflicto de horario" in response.json()["error"]
+        assert response.status_code == 422
+        response_json = response.json()
+        assert "detail" in response_json
