@@ -1,0 +1,28 @@
+http:
+  services:
+    classes-service:
+      loadBalancer:
+        servers:
+          - url: "http://classes-service:8000"
+        healthCheck:
+          path: "/health"
+          interval: "5s"
+          timeout: "3s"
+        passHostHeader: true
+        circuitBreaker:
+          expression: "NetworkErrorRatio() > 0.5"
+
+  routers:
+    classes:
+      rule: "PathPrefix(`/classes`)"
+      service: "classes-service"
+      entryPoints:
+        - web
+      middlewares:
+        - retry-classes
+
+  middlewares:
+    retry-classes: 
+      retry:
+        attempts: 3
+        initialInterval: 500ms
