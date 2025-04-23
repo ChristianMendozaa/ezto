@@ -2,9 +2,9 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from app.controllers.register_controller import router as register_router
-from app.controllers.protected_controller import router as protected_router
-from app.controllers.auth_controller import router as auth_router
+from app.controllers.class_controller import router as class_router
+from app.controllers.reservation_controller import router as reservation_router
+from app.controllers.schedule_controller import router as schedule_router
 from app.middleware.auth_middleware import AuthMiddleware
 from app.middleware.rate_limit_middleware import RateLimitMiddleware
 from app.services.consul_service import register_service, deregister_service
@@ -32,10 +32,10 @@ def create_app(testing: bool = False) -> FastAPI:
             "url": "https://opensource.org/licenses/MIT",
         },
         openapi_tags=[
-            {"name": "Autenticación", "description": "Endpoints relacionados con autenticación y manejo de sesiones."},
-            {"name": "Registro de Usuarios", "description": "Manejo de registro de nuevos usuarios en la plataforma."},
-            {"name": "Rutas Protegidas", "description": "Endpoints protegidos que requieren autenticación."},
-            {"name": "Logout", "description": "Cierre de sesión y eliminación de cookies de autenticación."},
+            {"name": "Clases", "description": "Gestión de clases del gimnasio"},
+            {"name": "Reservas", "description": "Gestión de reservas de clases"},
+            {"name": "Horarios", "description": "Gestión de horarios y disponibilidad"},
+            {"name": "Monitoreo", "description": "Endpoints de monitoreo del servicio"},
         ],
         lifespan=lifespan if not testing else None
     )
@@ -92,10 +92,9 @@ def create_app(testing: bool = False) -> FastAPI:
         return {"status": "ok"}
 
     # Routers
-    app.include_router(register_router, prefix="/auth", tags=["Registro de Usuarios"])
-    app.include_router(auth_router, prefix="/auth", tags=["Autenticación"])
-    app.include_router(protected_router, prefix="/protected", tags=["Rutas Protegidas"])
-    app.include_router(auth_router, prefix="/auth", tags=["Logout"])
+    app.include_router(class_router, prefix="/classes", tags=["Clases"])
+    app.include_router(reservation_router, prefix="/reservations", tags=["Reservas"])
+    app.include_router(schedule_router, prefix="/schedules", tags=["Horarios"])
 
     return app
 
