@@ -20,13 +20,40 @@ router = APIRouter()
 async def create_class(class_data: ClassCreate, request: Request):
     try:
         user = await AuthService.get_current_user(request)
-        if user["role"] != "admin":
+        if user["role"] != "gym_owner":
             raise HTTPException(status_code=403, detail="No tiene permisos para crear clases")
         
-        new_class = await ClassService.create_class(class_data)
-        return success_response(new_class)
-    except HTTPException as e:
-        raise e
+        # Convertir el modelo Pydantic a diccionario
+        class_dict = class_data.model_dump()
+        
+        # Crear la clase y obtener el ID
+        class_id = await ClassService.create_class(class_dict)
+        
+        # Construir la respuesta en el formato correcto
+        response_data = {
+            "id": class_id,
+            "name": class_dict["name"],
+            "description": class_dict["description"],
+            "instructor_id": class_dict["instructor_id"],
+            "instructor_name": class_dict["instructor_id"],  # Aquí deberías obtener el nombre real del instructor
+            "duration": class_dict["duration"],
+            "capacity": class_dict["capacity"],
+            "available_spots": class_dict["capacity"],
+            "current_reservations": 0,
+            "class_type": str(class_dict["class_type"]),
+            "difficulty_level": class_dict["difficulty_level"],
+            "room": class_dict["room"],
+            "schedule_id": class_id,  # Usando el mismo ID como schedule_id
+            "start_time": class_dict["start_time"],
+            "end_time": class_dict["end_time"],
+            "days_of_week": class_dict["days_of_week"],
+            "created_at": datetime.now().isoformat(),
+            "updated_at": datetime.now().isoformat(),
+            "status": "activa"
+        }
+        
+        return response_data
+        
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -82,7 +109,7 @@ async def list_classes(
 async def update_class(class_id: str, class_data: ClassUpdate, request: Request):
     try:
         user = await AuthService.get_current_user(request)
-        if user["role"] != "admin":
+        if user["role"] != "gym_owner":
             raise HTTPException(status_code=403, detail="No tiene permisos para actualizar clases")
         
         updated_class = await ClassService.update_class(class_id, class_data)

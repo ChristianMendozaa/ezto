@@ -67,7 +67,7 @@ services:
       dockerfile: Dockerfile
     volumes:
       - ./classes-service:/app
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    command: uvicorn app.main:app --host 0.0.0.0 --port 7999 --reload
     environment:
       - ENV=development
     labels:
@@ -76,7 +76,7 @@ services:
       - "traefik.http.routers.classes.entrypoints=web"
       - "traefik.http.routers.classes.middlewares=classes-headers"
       - "traefik.http.middlewares.classes-headers.headers.customrequestheaders.X-From-Traefik=EzTo"
-      - "traefik.http.services.classes.loadbalancer.server.port=8000"
+      - "traefik.http.services.classes.loadbalancer.server.port=7999"
       - "traefik.http.services.classes.loadbalancer.healthcheck.path=/health"
       - "traefik.http.services.classes.loadbalancer.healthcheck.interval=5s"
       - "traefik.http.services.classes.loadbalancer.healthcheck.timeout=3s"

@@ -16,13 +16,13 @@ def register_service():
         "ID": service_id,
         "Name": "classes-service",    # Cambiado de auth-service
         "Address": get_local_ip(),
-        "Port": 8000,
+        "Port": 7999,
         "Check": { 
-            "HTTP": f"http://{get_local_ip()}:8000/health",
+            "HTTP": f"http://{get_local_ip()}:7999/health",
             "Interval": "10s",
             "Timeout": "1s"
         },
-        "Tags": ["classes", "reservations", "fastapi", "v1", "env:dev"],  # Actualizados los tags
+        "Tags": ["classes", "fastapi", "v1", "env:dev"],  # Actualizados los tags
         "Meta": {
             "version": "1.0.0",
             "maintainer": "infra@eztoplatform.com"

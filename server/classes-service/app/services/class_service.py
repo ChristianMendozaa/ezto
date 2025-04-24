@@ -1,4 +1,3 @@
-# app/services/class_service.py
 from fastapi import HTTPException, Request
 from app.utils.firebase_config import db
 from datetime import datetime

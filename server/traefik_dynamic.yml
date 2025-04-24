@@ -14,7 +14,7 @@ http:
     classes-service:
       loadBalancer:
         servers:
-          - url: "http://classes-service:8000"
+          - url: "http://classes-service:7999"
         healthCheck:
           path: "/health"
           interval: "5s"
