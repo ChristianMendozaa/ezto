@@ -19,9 +19,9 @@ async def lifespan(app: FastAPI):
 def create_app(testing: bool = False) -> FastAPI:
     app = FastAPI(
         title="Autenticación y Registro - Plataforma EzTo",
-        description="Microservicio para autenticación y registro de usuarios con FastAPI y Firebase. "
-                    "Incluye autenticación basada en JWT, protección de rutas y manejo de sesiones.",
+        description="Microservicio para autenticación y registro de usuarios con FastAPI y Firebase...",
         version="1.0.0",
+        root_path="/auth",
         contact={
             "name": "Equipo EzTo",
             "url": "https://eztoplatform.com/contact",
@@ -39,7 +39,7 @@ def create_app(testing: bool = False) -> FastAPI:
         ],
         lifespan=lifespan if not testing else None
     )
-
+    
     # CORS
     app.add_middleware(
         CORSMiddleware,
@@ -92,10 +92,10 @@ def create_app(testing: bool = False) -> FastAPI:
         return {"status": "ok"}
 
     # Routers
-    app.include_router(register_router, prefix="/auth", tags=["Registro de Usuarios"])
-    app.include_router(auth_router, prefix="/auth", tags=["Autenticación"])
-    app.include_router(protected_router, prefix="/protected", tags=["Rutas Protegidas"])
-    app.include_router(auth_router, prefix="/auth", tags=["Logout"])
+    app.include_router(register_router, tags=["Registro de Usuarios"])
+    app.include_router(auth_router, tags=["Autenticación"])
+    app.include_router(protected_router, tags=["Rutas Protegidas"])
+    app.include_router(auth_router, tags=["Logout"])
 
     return app
 
