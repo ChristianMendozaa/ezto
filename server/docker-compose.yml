@@ -7,6 +7,8 @@ services:
       - "--api.dashboard=true"
       - "--api.insecure=true"
       - "--providers.docker=true"
+      - "--providers.file.directory=/etc/traefik/dynamic"
+      - "--providers.file.watch=true"
       - "--entrypoints.web.address=:80"
       - "--log.level=DEBUG"
       - "--tracing=true"
@@ -32,6 +34,33 @@ services:
     networks:
       - ezto
 
+  auth-service:
+    build:
+      context: ./auth-service
+      dockerfile: Dockerfile
+    volumes:
+      - ./auth-service:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    environment:
+      - ENV=development
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.auth.rule=PathPrefix(`/auth`)"
+      - "traefik.http.routers.auth.entrypoints=web"
+      - "traefik.http.routers.auth.middlewares=auth-headers"
+      - "traefik.http.middlewares.auth-headers.headers.customrequestheaders.X-From-Traefik=EzTo"
+      - "traefik.http.middlewares.retry-auth.retry.attempts=3"
+      - "traefik.http.middlewares.retry-auth.retry.initialinterval=500ms"
+      - "traefik.http.services.auth.loadbalancer.server.port=8000"
+      - "traefik.http.services.auth.loadbalancer.healthcheck.path=/health"
+      - "traefik.http.services.auth.loadbalancer.healthcheck.interval=5s"
+      - "traefik.http.services.auth.loadbalancer.healthcheck.timeout=3s"
+    networks:
+      - ezto
+    depends_on:
+      - keycloak
+      - consul
+
   classes-service:
     build:
       context: ./classes-service
@@ -47,6 +76,7 @@ services:
       - "traefik.http.routers.classes.entrypoints=web"
       - "traefik.http.routers.classes.middlewares=classes-headers"
       - "traefik.http.middlewares.classes-headers.headers.customrequestheaders.X-From-Traefik=EzTo"
+      - "traefik.http.services.classes.loadbalancer.server.port=8000"
       - "traefik.http.services.classes.loadbalancer.healthcheck.path=/health"
       - "traefik.http.services.classes.loadbalancer.healthcheck.interval=5s"
       - "traefik.http.services.classes.loadbalancer.healthcheck.timeout=3s"
