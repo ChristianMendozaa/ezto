@@ -1,26 +1,35 @@
+# supplier-service/app/main.py
+
 import os
+import socket
+import uuid
 import logging
-from fastapi import FastAPI, Request, JSONResponse
-from fastapi.exceptions import RequestValidationError
+import requests
+
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.exceptions import RequestValidationError
 
 from app.controllers.supplier_controller import router as supplier_router
 from app.utils.service_registry import register_service, deregister_service
 
-# Configuración de logging
-logging.basicConfig(format="%(asctime)s %(levelname)s %(name)s: %(message)s", level=logging.INFO)
+# --- Logging ---
+logging.basicConfig(
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    level=logging.INFO
+)
 logger = logging.getLogger(__name__)
 
-# Variables de entorno
-autoenv = os.getenv
-CONSUL_ADDR  = autoenv("CONSUL_ADDR", "http://consul:8500")
-PORT         = int(autoenv("PORT", "8003"))
+# --- Configuración ---
+CONSUL_ADDR  = os.getenv("CONSUL_ADDR", "http://consul:8500")
+PORT         = int(os.getenv("PORT", 8003))
 SERVICE_NAME = "supplier-service"
-service_id   = None
+service_id: str | None = None
 
-# Instancia de FastAPI
+# --- App FastAPI ---
 app = FastAPI(
     title="Supplier Service",
     description="Microservicio para gestión de proveedores",
@@ -28,24 +37,19 @@ app = FastAPI(
     openapi_tags=[{"name": "Proveedores"}]
 )
 
-# Middlewares
-def include_middlewares():
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
-    app.add_middleware(GZipMiddleware, minimum_size=1000)
-    app.add_middleware(
-        TrustedHostMiddleware,
-        allowed_hosts=["*"]
-    )
+# --- Middlewares ---
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], allow_credentials=True,
+    allow_methods=["*"], allow_headers=["*"],
+)
+app.add_middleware(GZipMiddleware, minimum_size=1000)
+app.add_middleware(
+    TrustedHostMiddleware,
+    allowed_hosts=["*"]
+)
 
-include_middlewares()
-
-# Handlers de errores
+# --- Handlers de errores ---
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     logger.error(f"Validation error: {exc}")
@@ -56,16 +60,15 @@ async def general_exception_handler(request: Request, exc: Exception):
     logger.error(f"Unexpected error: {exc}")
     return JSONResponse(status_code=500, content={"detail": "Error interno, intente más tarde."})
 
-# Rutas
-a_pp.Router = supplier_router
+# --- Routers ---
 app.include_router(supplier_router, prefix="/suppliers", tags=["Proveedores"])
 
-# Ruta de health check
+# --- Health check ---
 @app.get("/health", tags=["Monitoreo"])
 async def health_check():
     return {"status": "ok", "service": SERVICE_NAME}
 
-# Eventos de inicio y cierre para registro en Consul
+# --- Startup / Shutdown para Consul ---
 @app.on_event("startup")
 async def on_startup():
     global service_id
@@ -74,13 +77,11 @@ async def on_startup():
         service_name=SERVICE_NAME,
         service_port=PORT
     )
-    logger.info(f"Registered service '{SERVICE_NAME}' in Consul with ID: {service_id}")
 
 @app.on_event("shutdown")
 async def on_shutdown():
     if service_id:
         deregister_service(CONSUL_ADDR, service_id)
-        logger.info(f"Deregistered service '{SERVICE_NAME}' from Consul with ID: {service_id}")
 
 if __name__ == "__main__":
     import uvicorn

@@ -57,7 +57,7 @@ services:
       - KEYCLOAK_CLIENT_SECRET=${KEYCLOAK_CLIENT_SECRET}
       - ENV=${ENV}
     volumes:
-      - ./inventory-service:/app
+      - ./purchase-service:/app
       - ./firebase_credentials.json:/app/firebase_credentials.json:ro
     depends_on:
       - consul
@@ -77,7 +77,7 @@ services:
       - KEYCLOAK_CLIENT_SECRET=${KEYCLOAK_CLIENT_SECRET}
       - ENV=${ENV}
     volumes:
-      - ./inventory-service:/app
+      - ./shop-service:/app
       - ./firebase_credentials.json:/app/firebase_credentials.json:ro
     depends_on:
       - consul
@@ -96,7 +96,7 @@ services:
       - KEYCLOAK_CLIENT_SECRET=${KEYCLOAK_CLIENT_SECRET}
       - ENV=${ENV}
     volumes:
-      - ./inventory-service:/app
+      - ./supplier-service:/app
       - ./firebase_credentials.json:/app/firebase_credentials.json:ro
     depends_on:
       - consul
