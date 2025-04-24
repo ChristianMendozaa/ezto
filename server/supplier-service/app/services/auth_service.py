@@ -1,86 +1,55 @@
+# app/services/auth_service.py
+import os
 import logging
-from firebase_admin import auth
 from fastapi import HTTPException, Request
-from app.utils.firebase_config import db
+from keycloak import KeycloakOpenID
+from jose import JWTError
 
 logging.basicConfig(level=logging.INFO)
 
-class AuthService:
-    """
-    Servicio de autenticación local para el microservicio de Inventario/Ventas.
-    Duplica la lógica de verificación de tokens de Firebase para ser autónomo.
-    
-    - Verifica el token JWT recibido en la cookie 'authToken'.
-    - Confirma que el usuario exista en Firestore y extrae su rol.
-    - Retorna un diccionario con user_id, email y role.
-    
-    Cualquier cambio en la lógica de 'auth' de tu otro microservicio NO afecta a este.
-    Ambos pueden evolucionar de forma independiente.
-    """
-    @staticmethod
-    async def get_test_user(request: Request) -> dict:
-        """
-        Función para pruebas: retorna un usuario dummy sin requerir verificación de token.
-        """
-        return {"user_id": "test_user", "email": "test@example.com", "role": "gym_owner"}
+keycloak_openid = KeycloakOpenID(
+    server_url=os.getenv("KEYCLOAK_SERVER_URL"),
+    realm_name=os.getenv("KEYCLOAK_REALM"),
+    client_id=os.getenv("KEYCLOAK_CLIENT_ID"),
+    client_secret_key=os.getenv("KEYCLOAK_CLIENT_SECRET"),
+    verify=True
+)
 
+class AuthService:
     @staticmethod
     async def get_current_user(request: Request) -> dict:
-        """
-        Obtiene el token desde la cookie 'authToken' y llama a 'verify_token'.
-        Lanza HTTPException(401) si no se encuentra o es inválido.
-        
-        Returns:
-            dict: { "user_id": str, "email": str, "role": str }
-        """
-        token = request.cookies.get("authToken")
-        if not token:
-            # Opcionalmente, podrías intentar buscar en request.headers["Cookie"] si quieres
-            raise HTTPException(status_code=401, detail="Token ausente o inválido")
+        auth_header = request.headers.get("Authorization", "")
+        logging.debug(f"Received Authorization header: {auth_header!r}")
+        if not auth_header.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Token missing")
 
-        return await AuthService.verify_token(token)
+        token = auth_header.split(" ", 1)[1]
+        logging.info(f"Verifying token…")
 
-    @staticmethod
-    async def verify_token(token: str) -> dict:
-        """
-        Verifica el token JWT con Firebase Admin. Si es válido, confirma la existencia
-        del usuario en Firestore y retorna un objeto con user_id, email y role.
-        
-        Args:
-            token (str): Token JWT recibido (normalmente en la cookie 'authToken').
+        # 1) Introspección
+        intros = keycloak_openid.introspect(token)
+        logging.debug(f"Introspect response: {intros}")
+        if not intros.get("active"):
+            raise HTTPException(status_code=401, detail="Token invalid or expired")
 
-        Raises:
-            HTTPException(401): Si el token es inválido o la verificación falla.
-            HTTPException(404): Si el usuario no está en Firestore.
-
-        Returns:
-            dict: Información del usuario, p.ej. {"user_id": "...", "email": "...", "role": "..."}
-        """
+        # 2) Decodificación
         try:
-            decoded_token = auth.verify_id_token(token)
-            logging.info(f"Decoded token: {decoded_token}")
-        except ValueError as e:
-            logging.error(f"Error de validación del token: {str(e)}")
-            raise HTTPException(status_code=401, detail="Token inválido o expirado")
+            public_key = keycloak_openid.public_key()
+            decoded = keycloak_openid.decode_token(token, key=public_key)
+            logging.info(f"Token decoded: sub={decoded.get('sub')}, email={decoded.get('email')}")
+        except JWTError as e:
+            logging.error(f"Token decode error: {e}")
+            raise HTTPException(status_code=401, detail="Token signature error")
         except Exception as e:
-            logging.error(f"Error inesperado en verify_id_token: {str(e)}")
-            raise HTTPException(status_code=401, detail="Error en autenticación")
+            logging.error(f"Unexpected decode error: {e}")
+            raise HTTPException(status_code=401, detail="Authentication failed")
 
-        # Extraer el user_id del token decodificado
-        user_id = decoded_token.get("uid")
-        if not user_id:
-            raise HTTPException(status_code=401, detail="Token sin UID de usuario")
-
-        # Consultar Firestore para asegurar que existe y obtener su rol
-        user_doc = db.collection("users").document(user_id).get()
-        if not user_doc.exists:
-            raise HTTPException(status_code=404, detail="Usuario no encontrado en la base de datos")
-
-        user_data = user_doc.to_dict()
-        user_type = user_data.get("user_type", "gym_member")
+        # 3) Mapea rol
+        roles = decoded.get("realm_access", {}).get("roles", [])
+        role = "gym_owner" if "gym_owner" in roles else "gym_member"
 
         return {
-            "user_id": user_id,
-            "email": decoded_token.get("email", ""),
-            "role": user_type
+            "user_id": decoded.get("sub"),
+            "email": decoded.get("email"),
+            "role": role
         }
