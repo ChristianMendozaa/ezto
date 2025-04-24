@@ -1,52 +1,49 @@
-from starlette.middleware.base import BaseHTTPMiddleware
-from fastapi import Request
-from fastapi.responses import JSONResponse
-from app.utils.keycloak_config import keycloak_openid
-import logging
+# inventory-service/app/services/auth_service.py
+import os
+from fastapi import HTTPException, Request
+from keycloak import KeycloakOpenID
+from jose import JWTError
 
-logger = logging.getLogger(__name__)
+# Cargamos directo desde las env vars (Docker ya las inyecta)
+KEYCLOAK_URL    = os.getenv("KEYCLOAK_URL")      # ej: http://keycloak:8080/
+KEYCLOAK_REALM  = os.getenv("KEYCLOAK_REALM")    # ej: master
+KEYCLOAK_CLIENT = os.getenv("KEYCLOAK_CLIENT_ID")
+KEYCLOAK_SECRET = os.getenv("KEYCLOAK_CLIENT_SECRET")  # puede ser None
 
-EXCLUDED_PATHS = ["/auth/logout", "/auth/register", "/auth/login"]
+keycloak_openid = KeycloakOpenID(
+    server_url=KEYCLOAK_URL,
+    realm_name=KEYCLOAK_REALM,
+    client_id=KEYCLOAK_CLIENT,
+    client_secret_key=KEYCLOAK_SECRET,  # omitir si cliente público
+    verify=True
+)
 
+class AuthService:
+    @staticmethod
+    async def get_current_user(request: Request) -> dict:
+        auth_header = request.headers.get("Authorization", "")
+        if not auth_header.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Token missing")
+        token = auth_header.split(" ", 1)[1]
 
-class AuthMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):
-        if request.url.path in EXCLUDED_PATHS:
-            return await call_next(request)
+        # 1) Introspección para validar token
+        intros = keycloak_openid.introspect(token)
+        if not intros.get("active"):
+            raise HTTPException(status_code=401, detail="Token invalid or expired")
 
-        token = request.cookies.get("authToken")
-
-        if not token:
-            cookie_header = request.headers.get("Cookie", "")
-            if "authToken=" in cookie_header:
-                token = cookie_header.split("authToken=")[-1].split(";")[0]
-
-        if not token:
-            return await call_next(request)  # Permitir acceso a rutas públicas
-
+        # 2) Decodificar para extraer claims / roles
         try:
-            token_info = keycloak_openid.introspect(token)
-
-            if not token_info.get("active"):
-                raise Exception("Token inactivo")
-
-            # Guardamos los datos del token para su uso posterior
-            request.state.user = {
-                "user_id": token_info.get("sub"),
-                "email": token_info.get("email"),
-                "username": token_info.get("preferred_username"),
-                "role": token_info.get("user_type", "gym_member")
-            }
-
-        except Exception as e:
-            logger.warning(f"Token inválido: {e}")
-            return JSONResponse(
-                status_code=401,
-                content={
-                    "success": False,
-                    "data": None,
-                    "error": "Token inválido o expirado"
-                }
+            decoded = keycloak_openid.decode_token(
+                token,
+                key=keycloak_openid.public_key(),
+                options={"verify_signature": True, "exp": True}
             )
+        except JWTError:
+            raise HTTPException(status_code=401, detail="Token signature error")
 
-        return await call_next(request)
+        user_id = decoded.get("sub")
+        email   = decoded.get("email")
+        roles   = decoded.get("realm_access", {}).get("roles", [])
+        role    = "gym_owner" if "gym_owner" in roles else "gym_member"
+
+        return {"user_id": user_id, "email": email, "role": role}

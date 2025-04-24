@@ -5,6 +5,9 @@ services:
     command: ["start-dev"]
     ports:
       - "8080:8080"
+    environment:
+      - KEYCLOAK_ADMIN=${KEYCLOAK_ADMIN}
+      - KEYCLOAK_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD}
 
   consul:
     image: hashicorp/consul:latest
@@ -31,10 +34,16 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8002:8002"
+    env_file:
+      - .env
     environment:
-      - ENV=development
-      - PORT=8002
-      - CONSUL_ADDR=http://consul:8500
+      - PORT=${PORT_INVENTORY}
+      - CONSUL_ADDR=${CONSUL_ADDR}
+      - KEYCLOAK_SERVER_URL=${KEYCLOAK_SERVER_URL}
+      - KEYCLOAK_REALM=${KEYCLOAK_REALM}
+      - KEYCLOAK_CLIENT_ID=${KEYCLOAK_CLIENT_ID}
+      - KEYCLOAK_CLIENT_SECRET=${KEYCLOAK_CLIENT_SECRET}
+      - ENV=${ENV}
     volumes:
       - ./inventory-service:/app
     depends_on:
