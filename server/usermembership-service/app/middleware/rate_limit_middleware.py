@@ -1,7 +1,7 @@
 from starlette.middleware.base import BaseHTTPMiddleware
 from fastapi import Request
 from starlette.responses import JSONResponse
-from datetime import datetime, UTC
+from datetime import datetime
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
     rate_limit = {}
@@ -10,7 +10,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next):
         client_ip = request.client.host
-        request.state.timestamp = datetime.now(UTC).timestamp()
+        request.state.timestamp = datetime.utcnow().timestamp()
 
         if client_ip not in self.rate_limit:
             self.rate_limit[client_ip] = []

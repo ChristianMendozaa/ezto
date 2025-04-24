@@ -27,8 +27,8 @@ services:
   jaeger:
     image: jaegertracing/all-in-one:1.51
     ports:
-      - "16686:16686"      # UI de Jaeger
-      - "6831:6831/udp"    # Tracing
+      - "16686:16686"
+      - "6831:6831/udp"
     networks:
       - ezto
 
@@ -57,6 +57,61 @@ services:
       - ezto
     depends_on:
       - keycloak
+      - consul
+
+  promotions-service:
+    build:
+      context: ./promotions-service
+      dockerfile: Dockerfile
+    volumes:
+    - ./promotions-service:/app
+
+    ports:
+      - "8001:8001"
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
+    environment:
+      - ENV=development
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.promotions.rule=PathPrefix(`/promotions`)"
+      - "traefik.http.routers.promotions.entrypoints=web"
+      - "traefik.http.routers.promotions.middlewares=promotions-headers"
+      - "traefik.http.middlewares.promotions-headers.headers.customrequestheaders.X-From-Traefik=EzTo"
+      - "traefik.http.services.promotions.loadbalancer.healthcheck.path=/health"
+      - "traefik.http.services.promotions.loadbalancer.healthcheck.interval=5s"
+      - "traefik.http.services.promotions.loadbalancer.healthcheck.timeout=3s"
+      - "traefik.http.services.promotions.loadbalancer.server.port=8001"
+
+    networks:
+      - ezto
+    depends_on:
+      - consul
+
+  usermembership-service:
+    build:
+      context: ./usermembership-service
+      dockerfile: Dockerfile
+    volumes:
+      - ./usermembership-service:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8002 --
+    ports:
+      - "8002:8002"
+    environment:
+      - ENV=development
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.membership.rule=PathPrefix(`/usermemberships`)"
+      - "traefik.http.routers.membership.entrypoints=web"
+      - "traefik.http.routers.membership.middlewares=membership-headers"
+      - "traefik.http.middlewares.membership-headers.headers.customrequestheaders.X-From-Traefik=EzTo"
+      - "traefik.http.services.membership.loadbalancer.healthcheck.path=/health"
+      - "traefik.http.services.membership.loadbalancer.healthcheck.interval=5s"
+      - "traefik.http.services.membership.loadbalancer.healthcheck.timeout=3s"
+      - "traefik.http.services.membership.loadbalancer.server.port=8002"
+
+    networks:
+      - ezto
+    depends_on:
       - consul
 
   keycloak:

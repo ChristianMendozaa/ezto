@@ -1,27 +1,30 @@
-# main.py (Microservicio de promociones)
-from fastapi import FastAPI, Request, Depends, HTTPException, status
-
-from fastapi.middleware.cors import CORSMiddleware
+# main.py (Microservicio de membresías activas)
+from fastapi import FastAPI, Request
 from contextlib import asynccontextmanager
+from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.exceptions import RequestValidationError
+from app.utils.consul_register import register_service_in_consul
+
+# Middlewares personalizados
 from app.middleware.auth_middleware import AuthMiddleware
 from app.middleware.rate_limit_middleware import RateLimitMiddleware
-from app.controllers.promotion_controller import router as promotion_router  # Importar el router de promociones
-from fastapi.exceptions import RequestValidationError
+
+# Controladores
+from app.controllers.usermembership_controller import router as user_membership_router
+
+# Manejo de errores
 from app.utils.exception_handlers import global_exception_dispatcher, request_validation_exception_handler
-from app.utils.consul_register import register_service_in_consul
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    register_service_in_consul("promotions-service", 8001)
+    register_service_in_consul("usermembership-service", 8002)
     yield
-
 app = FastAPI(
-    title="Gestión de Promociones - Plataforma EzTo",
-    description="Microservicio para la gestión de promociones dentro del sistema. "
-                ":)",
+    title="Gestión de Membresías Activas - Plataforma EzTo",
+    description="Microservicio para la gestión de membresías activas de los usuarios dentro del sistema EzTo.",
     version="1.0.0",
     lifespan=lifespan,
     contact={
@@ -34,28 +37,27 @@ app = FastAPI(
         "url": "https://opensource.org/licenses/MIT",
     },
     openapi_tags=[
-        {"name": "Promociones", "description": "Endpoints relacionados con la gestión de promociones."},
+        {"name": "Membresías", "description": "Endpoints relacionados con la gestión de membresías activas."},
     ]
 )
 
-# Configuración de CORS para permitir el acceso desde el frontend autorizado
+# 🔐 CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Especificar el origen del frontend
+    allow_origins=["http://localhost:3000"],
     allow_credentials=True,
-    allow_methods=["*"],  # Permitir todos los métodos
-    allow_headers=["*"],  # Permitir todos los headers
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
-# Middleware de Rate Limiting
-app.add_middleware(RateLimitMiddleware)
-
-# Middleware de GZIP para comprimir respuestas (mínimo 1KB)
+# 📈 GZIP para comprimir respuestas
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
-# Middleware de autenticación
+# 🔒 Autenticación y rate limiting
+app.add_middleware(RateLimitMiddleware)
 app.add_middleware(AuthMiddleware)
 
+# 🛡️ Seguridad de cabeceras
 @app.middleware("http")
 async def security_headers(request: Request, call_next):
     response = await call_next(request)
@@ -80,19 +82,18 @@ async def security_headers(request: Request, call_next):
     })
     return response
 
-
-# Middleware para restringir hosts permitidos
+# 🌍 Restricción de hosts
 app.add_middleware(
     TrustedHostMiddleware,
-    allowed_hosts=["*"],
+    allowed_hosts=["*"],  # En producción, reemplazar con dominios válidos
 )
-# Registro de manejadores de excepciones personalizados
+
+# ⚠️ Manejadores globales de excepciones
 app.add_exception_handler(RequestValidationError, request_validation_exception_handler)
 app.add_exception_handler(Exception, global_exception_dispatcher)
-
-# Incluir el router de promociones
-app.include_router(promotion_router, prefix="/promotions", tags=["Promociones"])
 
 @app.get("/health", tags=["Monitoreo"])
 def health_check():
     return {"status": "ok"}
+# 📌 Rutas del microservicio
+app.include_router(user_membership_router, prefix="/usermemberships", tags=["Membresías"])

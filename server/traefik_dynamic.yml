@@ -12,17 +12,67 @@ http:
         circuitBreaker:
           expression: "NetworkErrorRatio() > 0.5"
 
+    promotions-service:
+      loadBalancer:
+        servers:
+          - url: "http://promotions-service:8001"
+        healthCheck:
+          path: "/health"
+          interval: "5s"
+          timeout: "3s"
+        passHostHeader: true
+        circuitBreaker:
+          expression: "NetworkErrorRatio() > 0.5"
+
+    membership-service:
+      loadBalancer:
+        servers:
+          - url: "http://usermembership-service:8002"
+        healthCheck:
+          path: "/health"
+          interval: "5s"
+          timeout: "3s"
+        passHostHeader: true
+        circuitBreaker:
+          expression: "NetworkErrorRatio() > 0.5"
+
   routers:
     auth:
       rule: "PathPrefix(`/auth`)"
-      service: "auth-service"
+      service: auth-service
       entryPoints:
         - web
       middlewares:
         - retry-auth
 
+    promotions:
+      rule: "PathPrefix(`/promotions`)"
+      service: promotions-service
+      entryPoints:
+        - web
+      middlewares:
+        - retry-promotions
+
+    membership:
+      rule: "PathPrefix(`/membership`)"
+      service: membership-service
+      entryPoints:
+        - web
+      middlewares:
+        - retry-membership
+
   middlewares:
     retry-auth:
+      retry:
+        attempts: 3
+        initialInterval: 500ms
+
+    retry-promotions:
+      retry:
+        attempts: 3
+        initialInterval: 500ms
+
+    retry-membership:
       retry:
         attempts: 3
         initialInterval: 500ms
