@@ -7,8 +7,6 @@ from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.exceptions import RequestValidationError
 from app.utils.consul_register import register_service_in_consul
 
-# Middlewares personalizados
-from app.middleware.auth_middleware import AuthMiddleware
 from app.middleware.rate_limit_middleware import RateLimitMiddleware
 
 # Controladores
@@ -27,6 +25,7 @@ app = FastAPI(
     description="Microservicio para la gestión de membresías activas de los usuarios dentro del sistema EzTo.",
     version="1.0.0",
     lifespan=lifespan,
+    root_path="/usermemberships",
     contact={
         "name": "Equipo EzTo",
         "url": "https://eztoplatform.com/contact",
@@ -52,10 +51,8 @@ app.add_middleware(
 
 # 📈 GZIP para comprimir respuestas
 app.add_middleware(GZipMiddleware, minimum_size=1000)
-
 # 🔒 Autenticación y rate limiting
 app.add_middleware(RateLimitMiddleware)
-app.add_middleware(AuthMiddleware)
 
 # 🛡️ Seguridad de cabeceras
 @app.middleware("http")
@@ -92,8 +89,10 @@ app.add_middleware(
 app.add_exception_handler(RequestValidationError, request_validation_exception_handler)
 app.add_exception_handler(Exception, global_exception_dispatcher)
 
+app.include_router(user_membership_router, prefix="/usermemberships", tags=["Membresías"])
+
 @app.get("/health", tags=["Monitoreo"])
 def health_check():
     return {"status": "ok"}
 # 📌 Rutas del microservicio
-app.include_router(user_membership_router, prefix="/usermemberships", tags=["Membresías"])
+

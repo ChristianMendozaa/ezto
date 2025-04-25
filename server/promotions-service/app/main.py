@@ -5,13 +5,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from app.middleware.auth_middleware import AuthMiddleware
+
 from app.middleware.rate_limit_middleware import RateLimitMiddleware
 from app.controllers.promotion_controller import router as promotion_router  # Importar el router de promociones
 from fastapi.exceptions import RequestValidationError
 from app.utils.exception_handlers import global_exception_dispatcher, request_validation_exception_handler
 from app.utils.consul_register import register_service_in_consul
-
+#from app.controllers.promotion_controller import health_router 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -24,6 +24,7 @@ app = FastAPI(
                 ":)",
     version="1.0.0",
     lifespan=lifespan,
+    root_path="/promotions",
     contact={
         "name": "Equipo EzTo",
         "url": "https://eztoplatform.com/contact",
@@ -53,8 +54,6 @@ app.add_middleware(RateLimitMiddleware)
 # Middleware de GZIP para comprimir respuestas (mínimo 1KB)
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
-# Middleware de autenticación
-app.add_middleware(AuthMiddleware)
 
 @app.middleware("http")
 async def security_headers(request: Request, call_next):

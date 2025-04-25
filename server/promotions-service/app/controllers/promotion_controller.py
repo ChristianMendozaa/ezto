@@ -1,3 +1,4 @@
+# promotions-service/app/controllers/promotion_controller.py
 from fastapi import APIRouter, HTTPException, Body, Depends
 from typing import Dict, Any
 from app.models.dtos.promotion_dto import PromotionDTO
@@ -11,6 +12,10 @@ router = APIRouter()
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
+@router.get("/health", tags=["Monitoreo"])
+async def promotions_health():
+    return {"status": "ok"}
+
 @router.get("/", tags=["Promociones"], response_model=SuccessResponse)
 async def list_promotions(user: dict = Depends(AuthService.get_current_user)):
     """Obtiene la lista de todas las promociones disponibles."""
@@ -21,7 +26,7 @@ async def list_promotions(user: dict = Depends(AuthService.get_current_user)):
     return response
 
 @router.post("/create", response_model=StandardResponse)
-async def create_promotion(promotion: PromotionDTO, user=require_role("admin, gym_owner, gym_member, manage-account")):
+async def create_promotion(promotion: PromotionDTO,user: dict = Depends(AuthService.get_current_user)):
     """Crea una nueva promoción en la plataforma."""
     try:
         return await PromotionService.create_promotion(promotion)

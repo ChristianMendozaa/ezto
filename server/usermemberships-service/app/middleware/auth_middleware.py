@@ -1,4 +1,4 @@
-#promotions-service/app/middleware/auth_middleware.py
+# inventory-service/app/services/auth_service.py
 import os
 from fastapi import HTTPException, Request
 from keycloak import KeycloakOpenID
