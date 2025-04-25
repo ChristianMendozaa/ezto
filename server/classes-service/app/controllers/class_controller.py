@@ -69,7 +69,7 @@ async def get_class(class_id: str, request: Request):
     try:
         await AuthService.get_current_user(request)
         class_details = await ClassService.get_class(class_id)
-        return success_response(class_details)
+        return class_details
     except HTTPException as e:
         raise e
 
@@ -94,7 +94,7 @@ async def list_classes(
             instructor=instructor,
             available_only=available_only
         )
-        return success_response(classes)
+        return classes
     except HTTPException as e:
         raise e
 
@@ -112,8 +112,8 @@ async def update_class(class_id: str, class_data: ClassUpdate, request: Request)
         if user["role"] != "gym_owner":
             raise HTTPException(status_code=403, detail="No tiene permisos para actualizar clases")
         
-        updated_class = await ClassService.update_class(class_id, class_data)
-        return success_response(updated_class)
+        updated_class = await ClassService.update_class(class_id, class_data.model_dump(exclude_unset=True))
+        return updated_class
     except HTTPException as e:
         raise e
 
@@ -132,7 +132,7 @@ async def delete_class(class_id: str, request: Request):
             raise HTTPException(status_code=403, detail="No tiene permisos para eliminar clases")
         
         await ClassService.delete_class(class_id)
-        return success_response({"message": "Clase eliminada exitosamente"})
+        return {"message": "Clase eliminada exitosamente"}
     except HTTPException as e:
         raise e
 
@@ -148,6 +148,6 @@ async def check_availability(class_id: str, request: Request):
     try:
         await AuthService.get_current_user(request)
         availability = await ClassService.check_availability(class_id)
-        return success_response(availability)
+        return availability
     except HTTPException as e:
         raise e
