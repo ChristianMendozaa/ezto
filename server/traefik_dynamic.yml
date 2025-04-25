@@ -1,0 +1,28 @@
+http:
+  services:
+    auth-service:
+      loadBalancer:
+        servers:
+          - url: "http://auth-service:8000"
+        healthCheck:
+          path: "/health"
+          interval: "5s"
+          timeout: "3s"
+        passHostHeader: true
+        circuitBreaker:
+          expression: "NetworkErrorRatio() > 0.5"
+
+  routers:
+    auth:
+      rule: "PathPrefix(`/auth`)"
+      service: "auth-service"
+      entryPoints:
+        - web
+      middlewares:
+        - retry-auth
+
+  middlewares:
+    retry-auth:
+      retry:
+        attempts: 3
+        initialInterval: 500ms
