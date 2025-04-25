@@ -19,6 +19,17 @@ class UserRepository:
                 "credentials": [{"value": user.password, "type": "password"}],
             })
 
+            # Asignar el rol según user_type
+            role_name = user.user_type  # 'gym_owner' o 'gym_member'
+            roles = keycloak_admin.get_realm_roles()
+            role = next((r for r in roles if r['name'] == role_name), None)
+
+            if role is None:
+                raise Exception(f"El rol '{role_name}' no existe en Keycloak.")
+
+            keycloak_admin.assign_realm_roles(user_id=user_id, roles=[{"id": role['id'], "name": role['name']}])
+
+
             # 2. Guardar en Firestore
             user_data = user.dict()
             user_data["uid"] = user_id

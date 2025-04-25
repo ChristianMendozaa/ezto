@@ -1,5 +1,9 @@
 from pydantic import BaseModel, Field
+from typing import Optional, Generic, TypeVar
+from pydantic.generics import GenericModel
 
+# Modelo genérico para el campo "data"
+T = TypeVar("T")
 class DashboardResponse(BaseModel):
     """
     Respuesta para el Panel de Administración.
@@ -39,3 +43,10 @@ class RegisterResponse(BaseModel):
     """
     message: str = Field(..., title="Mensaje", description="Mensaje de éxito.")
     uid: str = Field(..., title="UID", description="Identificador único del usuario registrado.")
+class StandardResponse(GenericModel, Generic[T]):
+    """
+    Modelo de respuesta estándar con success, data y error.
+    """
+    success: bool = Field(..., description="Indica si la operación fue exitosa.")
+    data: Optional[T] = Field(None, description="Datos de la respuesta.")
+    error: Optional[str] = Field(None, description="Mensaje de error si ocurre alguno.")

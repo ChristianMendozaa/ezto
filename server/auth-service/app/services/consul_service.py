@@ -1,12 +1,16 @@
 import requests
 import socket
+from app.utils.env_config import require_env_var
 
-CONSUL_URL = "http://consul:8500"
+# Obtener las variables de entorno (ya cargadas)
+CONSUL_URL = require_env_var("CONSUL_ADDR")
+PORT_INVENTORY = int(require_env_var("PORT_INVENTORY"))
+ENV = require_env_var("ENV")
 
 def get_local_ip():
     try:
         return socket.gethostbyname(socket.gethostname())
-    except:
+    except Exception:
         return "127.0.0.1"
 
 def register_service():
@@ -15,13 +19,13 @@ def register_service():
         "ID": service_id,
         "Name": "auth-service",
         "Address": get_local_ip(),
-        "Port": 8000,
-        "Check": { 
-            "HTTP": f"http://{get_local_ip()}:8000/health",
+        "Port": PORT_INVENTORY,
+        "Check": {
+            "HTTP": f"http://{get_local_ip()}:{PORT_INVENTORY}/health",
             "Interval": "10s",
             "Timeout": "1s"
         },
-        "Tags": ["auth", "fastapi", "v1", "env:dev"],
+        "Tags": ["auth", "fastapi", "v1", f"env:{ENV}"],
         "Meta": {
             "version": "1.0.0",
             "maintainer": "infra@eztoplatform.com"
