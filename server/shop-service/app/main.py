@@ -16,7 +16,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 CONSUL_ADDR  = os.getenv("CONSUL_ADDR", "http://consul:8500")
-PORT         = int(os.getenv("PORT", 8001))
+PORT         = int(os.getenv("PORT", 8005))
 SERVICE_NAME = "shop-service"
 service_id   = None
 
