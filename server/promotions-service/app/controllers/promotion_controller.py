@@ -1,70 +1,57 @@
-from fastapi import APIRouter, HTTPException
-from app.models.promotion_model import Promotion
+from fastapi import APIRouter, HTTPException, Body, Depends
+from typing import Dict, Any
+from app.models.dtos.promotion_dto import PromotionDTO
 from app.services.promotion_service import PromotionService
-from typing import List
+from app.utils.response_standardization import SuccessResponse, ErrorResponse, StandardResponse
+from app.dependecies.auth_roles import require_role
+from app.services.auth_service import AuthService
 import logging
 
 router = APIRouter()
-
-# Configurar logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-@router.get("/", tags=["Promociones"])
-async def list_promotions():
+@router.get("/", tags=["Promociones"], response_model=SuccessResponse)
+async def list_promotions(user: dict = Depends(AuthService.get_current_user)):
     """Obtiene la lista de todas las promociones disponibles."""
-    logger.debug("Recibida petición GET /promotions/list")  # 🚀 Ver si la petición llega
-    try:
-        promotions = await PromotionService.get_all_promotions()  # ✅ CORRECTO
-        logger.debug(f"Promociones obtenidas: {promotions}")  # 🚀 Ver si Firestore devuelve datos
-        return [{"id": promo["id"], **promo} for promo in promotions]
-    except Exception as e:
-        logger.error(f"Error en GET /promotions/list: {str(e)}")  # ❌ Si algo falla
-        raise HTTPException(status_code=500, detail=str(e))
+    logger.debug("Recibida petición GET /promotions/")
+    response = await PromotionService.get_all_promotions()
+    if response.status == "error":
+        raise HTTPException(status_code=500, detail=response.dict())
+    return response
 
-@router.post(
-    "/create",
-    summary="Crear una nueva promoción",
-    description="Registra una nueva promoción en la plataforma.",
-    response_description="La promoción ha sido registrada exitosamente.",
-    responses={
-        200: {"description": "Promoción creada exitosamente"},
-        400: {"description": "Error en los datos proporcionados"},
-    },
-    tags=["Promociones"]
-)
-async def create_promotion(promotion: Promotion):
+@router.post("/create", response_model=StandardResponse)
+async def create_promotion(promotion: PromotionDTO, user=require_role("admin, gym_owner, gym_member, manage-account")):
     """Crea una nueva promoción en la plataforma."""
     try:
         return await PromotionService.create_promotion(promotion)
     except Exception as e:
-        logger.error(f"Error en POST /promotions/create: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.put(
-    "/update/{promotion_id}",
-    summary="Actualizar una promoción",
-    description="Actualiza los datos de una promoción existente.",
-    tags=["Promociones"]
-)
-async def update_promotion(promotion_id: str, promotion: Promotion):
-    """Actualiza una promoción en la plataforma."""
-    try:
-        return await PromotionService.update_promotion(promotion_id, promotion)
-    except Exception as e:
-        logger.error(f"Error en PUT /promotions/update/{promotion_id}: {str(e)}")
-        raise HTTPException(status_code=400, detail=str(e))
+@router.patch("/update/{promotion_id}", tags=["Promociones"], response_model=SuccessResponse)
+async def update_promotion_partial(promotion_id: str, updates: Dict[str, Any] = Body(...), user: dict = Depends(AuthService.get_current_user)):
+    """
+    Actualiza parcialmente una promoción por su ID (por ejemplo, solo el estado, descripción o fecha de fin).
+    """
+    logger.debug(f"Recibida petición PATCH /promotions/update/{promotion_id} con cambios: {updates}")
+    response = await PromotionService.update_promotion_partial(promotion_id, updates)
+    if response.status == "error":
+        raise HTTPException(status_code=400, detail=response.dict())
+    return response
 
-@router.delete(
-    "/delete/{promotion_id}",
-    summary="Eliminar una promoción",
-    description="Elimina una promoción de la plataforma.",
-    tags=["Promociones"]
-)
-async def delete_promotion(promotion_id: str):
+@router.delete("/delete/{promotion_id}", tags=["Promociones"], response_model=SuccessResponse)
+async def delete_promotion(promotion_id: str,user: dict = Depends(AuthService.get_current_user)):
     """Elimina una promoción por su ID."""
-    try:
-        return await PromotionService.delete_promotion(promotion_id)
-    except Exception as e:
-        logger.error(f"Error en DELETE /promotions/delete/{promotion_id}: {str(e)}")
-        raise HTTPException(status_code=400, detail=str(e))
+    response = await PromotionService.delete_promotion(promotion_id)
+    if response.status == "error":
+        raise HTTPException(status_code=400, detail=response.dict())
+    return response
+
+@router.get("/{promotion_id}", tags=["Promociones"], response_model=SuccessResponse)
+async def get_promotion_by_id(promotion_id: str,user: dict = Depends(AuthService.get_current_user)):
+    """Obtiene los detalles de una promoción por su ID."""
+    logger.debug(f"Recibida petición GET /promotions/{promotion_id}")
+    response = await PromotionService.get_promotion_by_id(promotion_id)
+    if response.status == "error":
+        raise HTTPException(status_code=404, detail=response.dict())
+    return response

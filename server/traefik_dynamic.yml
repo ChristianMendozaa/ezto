@@ -15,7 +15,7 @@ http:
     inventory-service:
       loadBalancer:
         servers:
-          - url: "http://inventory-service:8002"
+          - url: "http://inventory-service:${PORT_INVENTORY}"
         healthCheck:
           path: "/health"
           interval: "5s"
@@ -27,7 +27,7 @@ http:
     purchase-service:
       loadBalancer:
         servers:
-          - url: "http://purchase-service:8004"
+          - url: "http://purchase-service:${PORT_PURCHASE}"
         healthCheck:
           path: "/health"
           interval: "5s"
@@ -39,7 +39,7 @@ http:
     shop-service:
       loadBalancer:
         servers:
-          - url: "http://shop-service:8001"
+          - url: "http://shop-service:${PORT_SHOP}"
         healthCheck:
           path: "/health"
           interval: "5s"
@@ -51,7 +51,31 @@ http:
     supplier-service:
       loadBalancer:
         servers:
-          - url: "http://supplier-service:8003"
+          - url: "http://supplier-service:${PORT_SUPPLIER}"
+        healthCheck:
+          path: "/health"
+          interval: "5s"
+          timeout: "3s"
+        passHostHeader: true
+        circuitBreaker:
+          expression: "NetworkErrorRatio() > 0.5"
+
+    promotions-service:
+      loadBalancer:
+        servers:
+          - url: "http://promotions-service:${PORT_PROMOTIONS}"
+        healthCheck:
+          path: "/health"
+          interval: "5s"
+          timeout: "3s"
+        passHostHeader: true
+        circuitBreaker:
+          expression: "NetworkErrorRatio() > 0.5"
+
+    usermembership-service:
+      loadBalancer:
+        servers:
+          - url: "http://usermembership-service:${PORT_MEMBERSHIP}"
         healthCheck:
           path: "/health"
           interval: "5s"
@@ -87,7 +111,7 @@ http:
   routers:
     auth:
       rule: "PathPrefix(`/auth`)"
-      service: "auth-service"
+      service: auth-service
       entryPoints:
         - web
       middlewares:
@@ -95,7 +119,7 @@ http:
 
     inventory:
       rule: "PathPrefix(`/inventory`)"
-      service: "inventory-service"
+      service: inventory-service
       entryPoints:
         - web
       middlewares:
@@ -103,7 +127,7 @@ http:
 
     purchase:
       rule: "PathPrefix(`/purchase`)"
-      service: "purchase-service"
+      service: purchase-service
       entryPoints:
         - web
       middlewares:
@@ -111,7 +135,7 @@ http:
 
     shop:
       rule: "PathPrefix(`/shop`)"
-      service: "shop-service"
+      service: shop-service
       entryPoints:
         - web
       middlewares:
@@ -119,15 +143,31 @@ http:
 
     supplier:
       rule: "PathPrefix(`/supplier`)"
-      service: "supplier-service"
+      service: supplier-service
       entryPoints:
         - web
       middlewares:
         - retry-auth
 
+    promotions:
+      rule: "PathPrefix(`/promotions`)"
+      service: promotions-service
+      entryPoints:
+        - web
+      middlewares:
+        - retry-promotions
+
+    usermemberships:
+      rule: "PathPrefix(`/usermemberships`)"
+      service: usermembership-service
+      entryPoints:
+        - web
+      middlewares:
+        - retry-membership
+
     keycloak:
       rule: "PathPrefix(`/keycloak`)"
-      service: "keycloak"
+      service: keycloak
       entryPoints:
         - web
       middlewares:
@@ -135,7 +175,7 @@ http:
 
     consul:
       rule: "PathPrefix(`/consul`)"
-      service: "consul"
+      service: consul
       entryPoints:
         - web
       middlewares:
@@ -143,6 +183,16 @@ http:
 
   middlewares:
     retry-auth:
+      retry:
+        attempts: 3
+        initialInterval: 500ms
+
+    retry-promotions:
+      retry:
+        attempts: 3
+        initialInterval: 500ms
+
+    retry-membership:
       retry:
         attempts: 3
         initialInterval: 500ms
