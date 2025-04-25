@@ -1,21 +1,15 @@
-# app/models/product_model.py
-
-from pydantic import BaseModel, Field, condecimal, validator
+from pydantic import BaseModel, Field, condecimal, field_validator, FieldValidationInfo
 from datetime import date
-from typing import List, Optional
+from typing import Optional
 from enum import Enum
+import base64
 
 class ProductCategory(str, Enum):
     """
     Categorías disponibles para clasificación de productos.
     
     Valores:
-    - SUPLEMENTOS: Productos nutricionales y suplementos dietéticos
-    - ROPA: Indumentaria deportiva y accesorios de vestir
-    - EQUIPO: Equipamiento de entrenamiento y maquinaria
-    - ACCESORIOS: Accesorios deportivos menores
-    - BEBIDAS: Bebidas energéticas y suplementos líquidos
-    - OTROS: Categoría genérica para productos no clasificados
+    - SUPLEMENTOS, ROPA, EQUIPO, ACCESORIOS, BEBIDAS, OTROS
     """
     SUPLEMENTOS = "suplementos"
     ROPA = "ropa"
@@ -26,12 +20,10 @@ class ProductCategory(str, Enum):
 
 class ProductStatus(str, Enum):
     """
-    Estados de disponibilidad de un producto en el inventario.
+    Estados de disponibilidad de un producto.
     
     Valores:
-    - ACTIVO: Producto disponible para venta
-    - DESCONTINUADO: Producto retirado del catálogo
-    - AGOTADO: Producto temporalmente sin stock
+    - ACTIVO, DESCONTINUADO, AGOTADO
     """
     ACTIVO = "activo"
     DESCONTINUADO = "descontinuado"
@@ -39,27 +31,27 @@ class ProductStatus(str, Enum):
 
 class ProductBase(BaseModel):
     """
-    Modelo base para la gestión de productos en el inventario.
+    Modelo base para la gestión de productos.
     
     Atributos:
-    - name: Nombre comercial del producto
-    - sku: Identificador único del producto (formato: 8-15 caracteres alfanuméricos con guiones)
-    - category: Clasificación principal del producto
-    - description: Detalles técnicos o características relevantes
-    - purchase_price: Costo unitario de adquisición
-    - sale_price: Precio unitario de venta al público
-    - current_stock: Unidades disponibles en inventario
-    - min_stock: Umbral mínimo para alertas de reabastecimiento
-    - expiration_date: Fecha límite de consumo/uso (si aplica)
-    - supplier_id: Identificador único del proveedor
-    - barcode: Código de barras para escaneo (opcional)
-    - status: Estado actual en el sistema de inventario
-    - image_base64: Imagen del producto en formato Base64 (opcional)
+    - name: Nombre comercial (no vacío)
+    - sku: Código único (8-15 caracteres, mayúsculas, números y guiones)
+    - category: Clasificación principal
+    - description: Detalles del producto (opcional)
+    - purchase_price: Precio de compra (>0)
+    - sale_price: Precio de venta (> purchase_price)
+    - current_stock: Stock disponible (>=0)
+    - min_stock: Stock mínimo (>=0)
+    - expiration_date: Fecha de caducidad (si se proporciona, debe ser futura)
+    - supplier_id: Identificador del proveedor (no vacío)
+    - barcode: Código de barras (opcional, 12 o 13 dígitos numéricos)
+    - status: Estado del producto
+    - image_base64: Imagen en Base64 (opcional, formato válido)
     """
     name: str = Field(
         ...,
-        min_length=3, 
-        max_length=100, 
+        min_length=3,
+        max_length=100,
         example="Proteína Whey 2kg",
         description="Nombre comercial del producto"
     )
@@ -67,7 +59,7 @@ class ProductBase(BaseModel):
         ...,
         pattern=r'^[A-Z0-9\-]{8,15}$',
         example="PROT-WHEY-01",
-        description="Código único identificador (8-15 caracteres, mayúsculas, números y guiones)"
+        description="Código único (8-15 caracteres, mayúsculas, números y guiones)"
     )
     category: ProductCategory = Field(
         ...,
@@ -78,71 +70,95 @@ class ProductBase(BaseModel):
         None,
         max_length=500,
         example="Proteína de suero de leche isolate, sabor vainilla",
-        description="Características técnicas y detalles del producto"
+        description="Detalles del producto"
     )
     purchase_price: condecimal(gt=0) = Field(
         ...,
         example=25.99,
-        description="Costo unitario de compra al proveedor (USD)"
+        description="Precio de compra (USD)"
     )
     sale_price: condecimal(gt=0) = Field(
         ...,
         example=39.99,
-        description="Precio unitario de venta al público (USD)"
+        description="Precio de venta (USD)"
     )
     current_stock: int = Field(
         0,
         ge=0,
         example=50,
-        description="Unidades físicamente disponibles en inventario"
+        description="Stock disponible"
     )
     min_stock: int = Field(
         5,
         ge=0,
         example=10,
-        description="Cantidad mínima para activar alerta de reposición"
+        description="Stock mínimo para alerta"
     )
     expiration_date: Optional[date] = Field(
         None,
         example="2025-12-31",
-        description="Fecha de caducidad (para productos perecederos)"
+        description="Fecha de caducidad (si aplica)"
     )
     supplier_id: str = Field(
         ...,
         example="SUP-001",
-        description="Identificador único del proveedor registrado"
+        description="ID del proveedor"
     )
     barcode: Optional[str] = Field(
         None,
         example="123456789012",
-        description="Código de barras EAN-13 o UPC (opcional)"
+        description="Código de barras (EAN-13 o UPC)"
     )
     status: ProductStatus = Field(
         ProductStatus.ACTIVO,
         example=ProductStatus.ACTIVO,
-        description="Estado actual en el sistema de inventario"
+        description="Estado del producto"
     )
     image_base64: Optional[str] = Field(
         None,
-        description="Imagen del producto en formato Base64"
+        description="Imagen en formato Base64"
     )
 
-    @validator("sale_price")
-    def validate_prices(cls, v, values):
+    @field_validator("sale_price")
+    def validate_prices(cls, sale_price, info: FieldValidationInfo): # type: ignore
         """
-        Valida que el precio de venta sea mayor al de compra.
-        
-        Args:
-            v (float): Valor del precio de venta
-            values (dict): Diccionario con los demás valores del modelo
-            
-        Raises:
-            ValueError: Si el precio de venta es menor o igual al de compra
+        Asegura que sale_price sea mayor que purchase_price.
+        En Pydantic V2, info.data es donde encontramos los demás campos del modelo.
         """
-        if "purchase_price" in values and v <= values["purchase_price"]:
+        data = info.data  # dict con todos los valores
+        purchase_price = data.get("purchase_price")
+        if purchase_price is not None and sale_price <= purchase_price:
             raise ValueError("El precio de venta debe ser mayor al precio de compra")
+        return sale_price
+
+    @field_validator("name", "supplier_id")
+    def non_empty_string(cls, v, field):
+        if not v or not v.strip():
+            raise ValueError(f"{field.name} no puede estar vacío")
         return v
 
+    @field_validator("expiration_date")
+    def expiration_date_future(cls, v):
+        from datetime import date
+        if v is not None and v < date.today():
+            raise ValueError("La fecha de caducidad debe ser una fecha futura")
+        return v
+
+    @field_validator("barcode")
+    def validate_barcode(cls, v):
+        if v is not None:
+            if not v.isdigit() or len(v) not in (12, 13):
+                raise ValueError("El código de barras debe ser numérico y contener 12 o 13 dígitos")
+        return v
+
+    @field_validator("image_base64")
+    def validate_image_base64(cls, v):
+        if v is not None:
+            try:
+                base64.b64decode(v, validate=True)
+            except Exception:
+                raise ValueError("La imagen debe estar en formato Base64 válido")
+        return v
 class ProductResponse(ProductBase):
     """
     Modelo de respuesta para operaciones con productos, incluye campos calculados y de auditoría.
@@ -173,10 +189,9 @@ class ProductResponse(ProductBase):
         example=53.8,
         description="Margen de ganancia porcentual calculado ((sale_price - purchase_price)/purchase_price * 100)"
     )
-
     class Config:
-        orm_mode = True
-        schema_extra = {
+        from_attributes = True  # Antes: orm_mode = True
+        json_schema_extra = {   # Antes: schema_extra = { ... }
             "example": {
                 "id": "6489a5d2fae8b1b9f7654321",
                 "name": "Proteína Whey 2kg",

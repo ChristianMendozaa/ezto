@@ -1,0 +1,127 @@
+{
+    "info": {
+      "_postman_id": "a1f3d5e7-1234-4abc-9ef0-111222333444",
+      "name": "EzTo Inventory – Keycloak",
+      "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+      {
+        "name": "Get Token",
+        "event": [
+          {
+            "listen": "test",
+            "script": {
+              "exec": [
+                "const json = pm.response.json();",
+                "pm.environment.set(\"access_token\", json.access_token);"
+              ],
+              "type": "text/javascript"
+            }
+          }
+        ],
+        "request": {
+          "method": "POST",
+          "header": [
+            { "key": "Content-Type", "value": "application/x-www-form-urlencoded" }
+          ],
+          "body": {
+            "mode": "urlencoded",
+            "urlencoded": [
+              { "key": "client_id",       "value": "{{KEYCLOAK_CLIENT_ID}}" },
+              { "key": "client_secret",   "value": "{{KEYCLOAK_CLIENT_SECRET}}" },
+              { "key": "username",        "value": "{{KEYCLOAK_USER}}" },
+              { "key": "password",        "value": "{{KEYCLOAK_PASSWORD}}" },
+              { "key": "grant_type",      "value": "password" }
+            ]
+          },
+          "url": {
+            "raw": "{{KEYCLOAK_URL}}/realms/{{KEYCLOAK_REALM}}/protocol/openid-connect/token",
+            "host": ["{{KEYCLOAK_URL}}"],
+            "path": ["realms", "{{KEYCLOAK_REALM}}", "protocol", "openid-connect", "token"]
+          }
+        }
+      },
+      {
+        "name": "Introspect Token",
+        "request": {
+          "method": "POST",
+          "header": [
+            { "key": "Content-Type", "value": "application/x-www-form-urlencoded" }
+          ],
+          "body": {
+            "mode": "urlencoded",
+            "urlencoded": [
+              { "key": "client_id",     "value": "{{KEYCLOAK_CLIENT_ID}}" },
+              { "key": "client_secret", "value": "{{KEYCLOAK_CLIENT_SECRET}}" },
+              { "key": "token",         "value": "{{access_token}}" }
+            ]
+          },
+          "url": {
+            "raw": "{{KEYCLOAK_URL}}/realms/{{KEYCLOAK_REALM}}/protocol/openid-connect/token/introspect",
+            "host": ["{{KEYCLOAK_URL}}"],
+            "path": ["realms", "{{KEYCLOAK_REALM}}", "protocol", "openid-connect", "token", "introspect"]
+          }
+        }
+      },
+      {
+        "name": "Create Inventory Movement",
+        "event": [
+          {
+            "listen": "test",
+            "script": {
+              "exec": [
+                "const json = pm.response.json();",
+                "pm.environment.set(\"movement_id\", json.movement_id);"
+              ],
+              "type": "text/javascript"
+            }
+          }
+        ],
+        "request": {
+          "method": "POST",
+          "header": [
+            { "key": "Content-Type", "value": "application/json" },
+            { "key": "Authorization", "value": "Bearer {{access_token}}" }
+          ],
+          "body": {
+            "mode": "raw",
+            "raw": "{\n  \"product_id\":\"prod-001\",\n  \"movement_type\":\"entrada\",\n  \"quantity\": 10,\n  \"reason\":\"Restock inicial\",\n  \"reference_id\":\"ref-001\",\n  \"movement_date\":\"2025-04-19T12:00:00\",\n  \"responsible_id\":\"user-123\"\n}"
+          },
+          "url": {
+            "raw": "{{INVENTORY_URL}}/inventory/",
+            "host": ["{{INVENTORY_URL}}"],
+            "path": ["inventory"]
+          }
+        }
+      },
+      {
+        "name": "List Movements",
+        "request": {
+          "method": "GET",
+          "header": [
+            { "key": "Authorization", "value": "Bearer {{access_token}}" }
+          ],
+          "url": {
+            "raw": "{{INVENTORY_URL}}/inventory/",
+            "host": ["{{INVENTORY_URL}}"],
+            "path": ["inventory"]
+          }
+        }
+      },
+      {
+        "name": "Get Movement By ID",
+        "request": {
+          "method": "GET",
+          "header": [
+            { "key": "Authorization", "value": "Bearer {{access_token}}" }
+          ],
+          "url": {
+            "raw": "{{INVENTORY_URL}}/inventory/{{movement_id}}",
+            "host": ["{{INVENTORY_URL}}"],
+            "path": ["inventory", "{{movement_id}}"]
+          }
+        }
+      }
+    ]
+  }
+  

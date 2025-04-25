@@ -1,0 +1,169 @@
+{
+    "info": {
+      "_postman_id": "a1b2c3d4-e5f6-7890-abcd-123456efghij",
+      "name": "All Services CRUD + Keycloak",
+      "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "variable": [
+      { "key": "keycloak_host",     "value": "http://localhost:8080" },
+      { "key": "realm",             "value": "master" },
+      { "key": "client_id",         "value": "ezto-client" },
+      { "key": "client_secret",     "value": "ezto-secret" },
+      { "key": "username",          "value": "testuser" },
+      { "key": "password",          "value": "testpass" },
+      { "key": "inventory_host",    "value": "http://localhost:8002" },
+      { "key": "purchase_host",     "value": "http://localhost:8004" },
+      { "key": "shop_host",         "value": "http://localhost:8001" },
+      { "key": "supplier_host",     "value": "http://localhost:8003" }
+    ],
+    "item": [
+      {
+        "name": "🔐 Get Token",
+        "event": [{
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const js = pm.response.json();",
+              "pm.environment.set('access_token', js.access_token);"
+            ]
+          }
+        }],
+        "request": {
+          "method": "POST",
+          "header": [{"key":"Content-Type","value":"application/x-www-form-urlencoded"}],
+          "body": {
+            "mode": "urlencoded",
+            "urlencoded": [
+              { "key": "grant_type",    "value": "password" },
+              { "key": "client_id",     "value": "{{client_id}}" },
+              { "key": "client_secret", "value": "{{client_secret}}" },
+              { "key": "username",      "value": "{{username}}" },
+              { "key": "password",      "value": "{{password}}" }
+            ]
+          },
+          "url": { "raw": "{{keycloak_host}}/realms/{{realm}}/protocol/openid-connect/token" }
+        }
+      },
+      {
+        "name": "📦 Create Item (Inventory)",
+        "event": [{
+          "listen": "test",
+          "script": [
+            "const js = pm.response.json();",
+            "pm.environment.set('inventory_id', js.id);"
+          ]
+        }],
+        "request": {
+          "method": "POST",
+          "header": [
+            { "key": "Authorization", "value": "Bearer {{access_token}}" },
+            { "key": "Content-Type",  "value": "application/json" }
+          ],
+          "body": {
+            "mode": "raw",
+            "raw": "{ \"name\": \"Test Inv\", \"quantity\": 5, \"price\": 9.99 }"
+          },
+          "url": { "raw": "{{inventory_host}}/inventory" }
+        }
+      },
+      {
+        "name": "📦 Get All (Inventory)",
+        "request": {
+          "method": "GET",
+          "header": [{ "key":"Authorization","value":"Bearer {{access_token}}" }],
+          "url": { "raw": "{{inventory_host}}/inventory" }
+        }
+      },
+      {
+        "name": "🛒 Create Purchase",
+        "event": [{
+          "listen": "test",
+          "script": [
+            "const js = pm.response.json();",
+            "pm.environment.set('purchase_id', js.id);"
+          ]
+        }],
+        "request": {
+          "method": "POST",
+          "header": [
+            { "key":"Authorization","value":"Bearer {{access_token}}"},
+            { "key":"Content-Type","value":"application/json"}
+          ],
+          "body": {
+            "mode": "raw",
+            "raw": "{ \"item_id\": \"{{inventory_id}}\", \"qty\": 2, \"total\": 19.98 }"
+          },
+          "url": { "raw": "{{purchase_host}}/purchases" }
+        }
+      },
+      {
+        "name": "🛒 Get All Purchases",
+        "request": {
+          "method": "GET",
+          "header": [{ "key":"Authorization","value":"Bearer {{access_token}}" }],
+          "url": { "raw": "{{purchase_host}}/purchases" }
+        }
+      },
+      {
+        "name": "🛍️ Create Product",
+        "event": [{
+          "listen": "test",
+          "script": [
+            "const js=pm.response.json();",
+            "pm.environment.set('product_id', js.id);"
+          ]
+        }],
+        "request": {
+          "method": "POST",
+          "header": [
+            { "key":"Authorization","value":"Bearer {{access_token}}"},
+            { "key":"Content-Type","value":"application/json"}
+          ],
+          "body": {
+            "mode": "raw",
+            "raw": "{ \"name\":\"Prod A\",\"desc\":\"X\",\"price\":42.5 }"
+          },
+          "url": { "raw": "{{shop_host}}/products" }
+        }
+      },
+      {
+        "name": "🛍️ Get All Products",
+        "request": {
+          "method": "GET",
+          "header": [{ "key":"Authorization","value":"Bearer {{access_token}}" }],
+          "url": { "raw": "{{shop_host}}/products" }
+        }
+      },
+      {
+        "name": "📦 Create Supplier",
+        "event": [{
+          "listen": "test",
+          "script": [
+            "const js=pm.response.json();",
+            "pm.environment.set('supplier_id', js.id);"
+          ]
+        }],
+        "request": {
+          "method": "POST",
+          "header": [
+            { "key":"Authorization","value":"Bearer {{access_token}}"},
+            { "key":"Content-Type","value":"application/json"}
+          ],
+          "body": {
+            "mode": "raw",
+            "raw": "{ \"name\":\"Supp A\",\"contact\":\"abc@example.com\" }"
+          },
+          "url": { "raw": "{{supplier_host}}/suppliers" }
+        }
+      },
+      {
+        "name": "📦 Get All Suppliers",
+        "request": {
+          "method": "GET",
+          "header": [{ "key":"Authorization","value":"Bearer {{access_token}}" }],
+          "url": { "raw": "{{supplier_host}}/suppliers" }
+        }
+      }
+    ]
+  }
+  

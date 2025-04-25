@@ -1,0 +1,187 @@
+{
+    "info": {
+      "_postman_id": "b1c2d3e4-5678-90ab-cdef-1234567890ab",
+      "name": "Inventory Service - CRUD",
+      "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "variable": [
+      {
+        "key": "keycloak_host",
+        "value": "http://localhost:8080",
+        "type": "string"
+      },
+      {
+        "key": "realm",
+        "value": "master",
+        "type": "string"
+      },
+      {
+        "key": "client_id",
+        "value": "ezto-client",
+        "type": "string"
+      },
+      {
+        "key": "client_secret",
+        "value": "ezto-secret",
+        "type": "string"
+      },
+      {
+        "key": "username",
+        "value": "testuser",
+        "type": "string"
+      },
+      {
+        "key": "password",
+        "value": "testpass",
+        "type": "string"
+      },
+      {
+        "key": "inventory_host",
+        "value": "http://localhost:8002",
+        "type": "string"
+      }
+    ],
+    "item": [
+      {
+        "name": "Get Token",
+        "event": [
+          {
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": [
+                "const json = pm.response.json();",
+                "pm.environment.set(\"access_token\", json.access_token);"
+              ]
+            }
+          }
+        ],
+        "request": {
+          "method": "POST",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/x-www-form-urlencoded"
+            }
+          ],
+          "body": {
+            "mode": "urlencoded",
+            "urlencoded": [
+              { "key": "grant_type", "value": "password" },
+              { "key": "client_id", "value": "{{client_id}}" },
+              { "key": "client_secret", "value": "{{client_secret}}" },
+              { "key": "username", "value": "{{username}}" },
+              { "key": "password", "value": "{{password}}" }
+            ]
+          },
+          "url": {
+            "raw": "{{keycloak_host}}/realms/{{realm}}/protocol/openid-connect/token"
+          }
+        }
+      },
+      {
+        "name": "Create Inventory Item",
+        "event": [
+          {
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": [
+                "const json = pm.response.json();",
+                "pm.environment.set(\"item_id\", json.id);"
+              ]
+            }
+          }
+        ],
+        "request": {
+          "method": "POST",
+          "header": [
+            {
+              "key": "Authorization",
+              "value": "Bearer {{access_token}}"
+            },
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": {
+            "mode": "raw",
+            "raw": "{\n  \"name\": \"Test Item\",\n  \"quantity\": 10,\n  \"price\": 100.0\n}"
+          },
+          "url": {
+            "raw": "{{inventory_host}}/inventory"
+          }
+        }
+      },
+      {
+        "name": "Get All Inventory Items",
+        "request": {
+          "method": "GET",
+          "header": [
+            {
+              "key": "Authorization",
+              "value": "Bearer {{access_token}}"
+            }
+          ],
+          "url": {
+            "raw": "{{inventory_host}}/inventory"
+          }
+        }
+      },
+      {
+        "name": "Get Single Inventory Item",
+        "request": {
+          "method": "GET",
+          "header": [
+            {
+              "key": "Authorization",
+              "value": "Bearer {{access_token}}"
+            }
+          ],
+          "url": {
+            "raw": "{{inventory_host}}/inventory/{{item_id}}"
+          }
+        }
+      },
+      {
+        "name": "Update Inventory Item",
+        "request": {
+          "method": "PUT",
+          "header": [
+            {
+              "key": "Authorization",
+              "value": "Bearer {{access_token}}"
+            },
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": {
+            "mode": "raw",
+            "raw": "{\n  \"name\": \"Updated Item\",\n  \"quantity\": 20,\n  \"price\": 150.0\n}"
+          },
+          "url": {
+            "raw": "{{inventory_host}}/inventory/{{item_id}}"
+          }
+        }
+      },
+      {
+        "name": "Delete Inventory Item",
+        "request": {
+          "method": "DELETE",
+          "header": [
+            {
+              "key": "Authorization",
+              "value": "Bearer {{access_token}}"
+            }
+          ],
+          "url": {
+            "raw": "{{inventory_host}}/inventory/{{item_id}}"
+          }
+        }
+      }
+    ]
+  }
+  
