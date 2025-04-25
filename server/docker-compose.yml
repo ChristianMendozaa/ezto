@@ -16,8 +16,8 @@ services:
       - "--tracing.jaeger.samplingType=const"
       - "--tracing.jaeger.samplingParam=1.0"
     ports:
-      - "80:80"
-      - "8082:8080"  # Dashboard UI
+      - "80:80"       # HTTP entrypoint
+      - "8082:8080"   # Dashboard UI
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./traefik_dynamic.yml:/etc/traefik/dynamic/traefik_dynamic.yml
@@ -27,8 +27,33 @@ services:
   jaeger:
     image: jaegertracing/all-in-one:1.51
     ports:
-      - "16686:16686"      # UI de Jaeger
-      - "6831:6831/udp"    # Tracing
+      - "16686:16686"     # Jaeger UI
+      - "6831:6831/udp"   # Tracing
+    networks:
+      - ezto
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:21.1.1
+    command: ["start-dev"]
+    environment:
+      - KEYCLOAK_ADMIN=${KEYCLOAK_ADMIN}
+      - KEYCLOAK_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.keycloak.rule=PathPrefix(`/keycloak`)"
+      - "traefik.http.routers.keycloak.entrypoints=web"
+      - "traefik.http.services.keycloak.loadbalancer.server.port=8080"
+    networks:
+      - ezto
+
+  consul:
+    image: hashicorp/consul:latest
+    command: agent -dev -client=0.0.0.0
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.consul.rule=PathPrefix(`/consul`)"
+      - "traefik.http.routers.consul.entrypoints=web"
+      - "traefik.http.services.consul.loadbalancer.server.port=8500"
     networks:
       - ezto
 
@@ -36,64 +61,96 @@ services:
     build:
       context: ./auth-service
       dockerfile: Dockerfile
-    volumes:
-      - ./auth-service:/app
+    env_file: .env
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-    environment:
-      - ENV=development
+    depends_on:
+      - consul
+      - keycloak
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.auth.rule=PathPrefix(`/auth`)"
       - "traefik.http.routers.auth.entrypoints=web"
-      - "traefik.http.routers.auth.middlewares=auth-headers,strip-auth,retry-auth"
-      - "traefik.http.middlewares.auth-headers.headers.customrequestheaders.X-From-Traefik=EzTo"
-      - "traefik.http.middlewares.retry-auth.retry.attempts=3"
-      - "traefik.http.middlewares.retry-auth.retry.initialinterval=500ms"
-      - "traefik.http.middlewares.strip-auth.stripprefix.prefixes=/auth"
-      - "traefik.http.services.auth.loadbalancer.healthcheck.path=/auth/health"
-      - "traefik.http.services.auth.loadbalancer.healthcheck.interval=5s"
-      - "traefik.http.services.auth.loadbalancer.healthcheck.timeout=3s"
+      - "traefik.http.services.auth.loadbalancer.server.port=8000"
     networks:
       - ezto
+
+  inventory-service:
+    build:
+      context: ./inventory-service
+      dockerfile: Dockerfile
+    env_file: .env
+    command: uvicorn app.main:app --host 0.0.0.0 --port ${PORT_INVENTORY}
     depends_on:
-      - keycloak
       - consul
-
-  keycloak:
-    image: quay.io/keycloak/keycloak:22.0.1
-    command: start-dev
-    ports:
-      - "8080:8080"
-    environment:
-      KC_DB: postgres
-      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
-      KC_DB_USERNAME: keycloak
-      KC_DB_PASSWORD: keycloak
-      KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: admin
-    depends_on:
-      - postgres
-    networks:
-      - ezto
-
-  postgres:
-    image: postgres:15
-    restart: always
-    environment:
-      POSTGRES_DB: keycloak
-      POSTGRES_USER: keycloak
-      POSTGRES_PASSWORD: keycloak
+      - keycloak
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.inventory.rule=PathPrefix(`/inventory`)"
+      - "traefik.http.routers.inventory.entrypoints=web"
+      - "traefik.http.services.inventory.loadbalancer.server.port=${PORT_INVENTORY}"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - ./inventory-service:/app
+      - ./firebase_credentials.json:/app/firebase_credentials.json:ro
     networks:
       - ezto
 
-  consul:
-    image: consul:1.15
-    ports:
-      - "8500:8500"
-      - "8600:8600/udp"
-    command: agent -dev -client=0.0.0.0
+  purchase-service:
+    build:
+      context: ./purchase-service
+      dockerfile: Dockerfile
+    env_file: .env
+    command: uvicorn app.main:app --host 0.0.0.0 --port ${PORT_PURCHASE}
+    depends_on:
+      - consul
+      - keycloak
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.purchase.rule=PathPrefix(`/purchase`)"
+      - "traefik.http.routers.purchase.entrypoints=web"
+      - "traefik.http.services.purchase.loadbalancer.server.port=${PORT_PURCHASE}"
+    volumes:
+      - ./purchase-service:/app
+      - ./firebase_credentials.json:/app/firebase_credentials.json:ro
+    networks:
+      - ezto
+
+  shop-service:
+    build:
+      context: ./shop-service
+      dockerfile: Dockerfile
+    env_file: .env
+    command: uvicorn app.main:app --host 0.0.0.0 --port ${PORT_SHOP}
+    depends_on:
+      - consul
+      - keycloak
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.shop.rule=PathPrefix(`/shop`)"
+      - "traefik.http.routers.shop.entrypoints=web"
+      - "traefik.http.services.shop.loadbalancer.server.port=${PORT_SHOP}"
+    volumes:
+      - ./shop-service:/app
+      - ./firebase_credentials.json:/app/firebase_credentials.json:ro
+    networks:
+      - ezto
+
+  supplier-service:
+    build:
+      context: ./supplier-service
+      dockerfile: Dockerfile
+    env_file: .env
+    command: uvicorn app.main:app --host 0.0.0.0 --port ${PORT_SUPPLIER}
+    depends_on:
+      - consul
+      - keycloak
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.supplier.rule=PathPrefix(`/supplier`)"
+      - "traefik.http.routers.supplier.entrypoints=web"
+      - "traefik.http.services.supplier.loadbalancer.server.port=${PORT_SUPPLIER}"
+    volumes:
+      - ./supplier-service:/app
+      - ./firebase_credentials.json:/app/firebase_credentials.json:ro
     networks:
       - ezto
 
