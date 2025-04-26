@@ -9,7 +9,7 @@ router = APIRouter()
     "/dashboard",
     summary="Panel de Administración",
     description="Acceso al panel de administración para dueños de gimnasios. Se requiere el rol 'gym_owner'.",
-    response_model=StandardResponse[DashboardResponse]
+    response_model=StandardResponse
 )
 async def dashboard(user: dict = Depends(AuthService.require_role("gym_owner"))):
     """
@@ -21,7 +21,7 @@ async def dashboard(user: dict = Depends(AuthService.require_role("gym_owner")))
     "/client",
     summary="Panel de Cliente",
     description="Acceso al panel de cliente para miembros del gimnasio. Se requiere el rol 'gym_member'.",
-    response_model=StandardResponse[ClientResponse]
+    response_model=StandardResponse
 )
 async def client(user: dict = Depends(AuthService.require_role("gym_member"))):
     """

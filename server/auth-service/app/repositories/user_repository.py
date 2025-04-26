@@ -3,6 +3,7 @@ from app.utils.keycloak_config import keycloak_admin
 from app.models.user_model import UserRegister
 import asyncio
 from datetime import date
+from fastapi import HTTPException
 
 class UserRepository:
 
@@ -10,14 +11,24 @@ class UserRepository:
     async def create_user(user: UserRegister, logo_base64: str = None):
         try:
             # 1. Crear usuario en Keycloak
-            user_id = keycloak_admin.create_user({
-                "email": user.email,
-                "username": user.email,
-                "enabled": True,
-                "firstName": user.full_name.split(" ")[0],
-                "lastName": " ".join(user.full_name.split(" ")[1:]),
-                "credentials": [{"value": user.password, "type": "password"}],
-            })
+            try:
+                user_id = keycloak_admin.create_user({
+                    "email": user.email,
+                    "username": user.email,
+                    "enabled": True,
+                    "firstName": user.full_name.split(" ")[0],
+                    "lastName": " ".join(user.full_name.split(" ")[1:]),
+                    "credentials": [{"value": user.password, "type": "password"}],
+                })
+            except Exception as e:
+                error_msg = str(e)
+                if "User exists with same username" in error_msg:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Ya existe un usuario registrado con este correo electrónico."
+                    )
+                else:
+                    raise Exception(f"Error creando usuario en Keycloak: {error_msg}")
 
             # Asignar el rol según user_type
             role_name = user.user_type  # 'gym_owner' o 'gym_member'
@@ -25,10 +36,9 @@ class UserRepository:
             role = next((r for r in roles if r['name'] == role_name), None)
 
             if role is None:
-                raise Exception(f"El rol '{role_name}' no existe en Keycloak.")
+                raise HTTPException(status_code=400, detail=f"El rol '{role_name}' no existe en Keycloak.")
 
             keycloak_admin.assign_realm_roles(user_id=user_id, roles=[{"id": role['id'], "name": role['name']}])
-
 
             # 2. Guardar en Firestore
             user_data = user.dict()
@@ -67,5 +77,7 @@ class UserRepository:
 
             return {"message": "Usuario registrado exitosamente", "uid": user_id}
 
+        except HTTPException as http_ex:
+            raise http_ex
         except Exception as e:
-            raise Exception(f"Error registrando el usuario: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Error registrando el usuario: {str(e)}")

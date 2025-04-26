@@ -7,7 +7,7 @@ from typing import Optional
 from datetime import date, datetime
 from app.utils.response_helper import success_response, error_response
 from app.models.responses_models import RegisterResponse
-import re
+from fastapi import HTTPException
 
 router = APIRouter()
 
@@ -167,7 +167,11 @@ async def register_user(
         # Devolver la respuesta correcta con el UID real
         return RegisterResponse(message=result["message"], uid=result["uid"])
 
+    except HTTPException as http_ex:
+        # Si es una excepción controlada, respétala
+        return error_response(http_ex.detail, http_ex.status_code)
     except Exception as e:
+        # Si es cualquier otro error inesperado, ahí sí lanza 500
         print("Error durante el registro de usuario:")
-        traceback.print_exc()  # Imprime el traceback completo
+        traceback.print_exc()
         return error_response(str(e), 500)
