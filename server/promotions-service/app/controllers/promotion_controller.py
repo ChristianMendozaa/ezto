@@ -4,7 +4,6 @@ from typing import Dict, Any
 from app.models.dtos.promotion_dto import PromotionDTO
 from app.services.promotion_service import PromotionService
 from app.utils.response_standardization import SuccessResponse, ErrorResponse, StandardResponse
-from app.dependecies.auth_roles import require_role
 from app.services.auth_service import AuthService
 import logging
 
@@ -12,9 +11,6 @@ router = APIRouter()
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-@router.get("/health", tags=["Monitoreo"])
-async def promotions_health():
-    return {"status": "ok"}
 
 @router.get("/", tags=["Promociones"], response_model=SuccessResponse)
 async def list_promotions(user: dict = Depends(AuthService.get_current_user)):
