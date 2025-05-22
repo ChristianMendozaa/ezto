@@ -95,6 +95,30 @@ http:
         passHostHeader: true
         circuitBreaker:
           expression: "NetworkErrorRatio() > 0.5"
+    
+    class-service:
+      loadBalancer:
+        servers:
+          - url: "http://class-service:${PORT_CLASSES}"
+        healthCheck:
+          path: "/health"
+          interval: "5s"
+          timeout: "3s"
+        passHostHeader: true
+        circuitBreaker:
+          expression: "NetworkErrorRatio() > 0.5"
+    
+    reservations-service:
+      loadBalancer:
+        servers:
+          - url: "http://reservations-service:${PORT_RESERVATIONS}"
+        healthCheck:
+          path: "/health"
+          interval: "5s"
+          timeout: "3s"
+        passHostHeader: true
+        circuitBreaker:
+          expression: "NetworkErrorRatio() > 0.5"
 
     keycloak:
       loadBalancer:
@@ -184,6 +208,23 @@ http:
       middlewares:
         - retry-usermembership
 
+    reservations:
+      rule: "PathPrefix(`/reservations`)"
+      service: reservations-service
+      entryPoints:
+        - web
+      middlewares:
+        - retry-reservations
+        
+    
+    classes:
+      rule: "PathPrefix(`/classes`)"
+      service: class-service
+      entryPoints:
+        - web
+      middlewares:
+        - retry-class
+
     keycloak:
       rule: "PathPrefix(`/keycloak`)"
       service: keycloak
@@ -220,3 +261,13 @@ http:
       retry:
         attempts: 3
         initialInterval: 500ms
+
+    retry-class:
+      retry:
+        attempts: 3
+        initialInterval: 500ms
+    
+    retry-reservations:
+      retry:
+        attempts: 3
+        initialInterval: 500ms  

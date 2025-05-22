@@ -150,7 +150,7 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.inventory.rule=PathPrefix(`/inventory`)"
       - "traefik.http.routers.inventory.entrypoints=web"
-      - "traefik.http.routers.inventory.middlewares=supplier-headers"
+      - "traefik.http.routers.inventory.middlewares=inventory-headers"
       - "traefik.http.middlewares.inventory-headers.headers.customrequestheaders.X-From-Traefik=EzTo"
       - "traefik.http.services.inventory.loadbalancer.healthcheck.path=/health"
       - "traefik.http.services.inventory.loadbalancer.healthcheck.interval=5s"
@@ -206,7 +206,7 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.shop.rule=PathPrefix(`/shop`)"
       - "traefik.http.routers.shop.entrypoints=web"
-      - "traefik.http.routers.shop.middlewares=supplier-headers"
+      - "traefik.http.routers.shop.middlewares=shop-headers"
       - "traefik.http.middlewares.shop-headers.headers.customrequestheaders.X-From-Traefik=EzTo"
       - "traefik.http.services.shop.loadbalancer.healthcheck.path=/health"
       - "traefik.http.services.shop.loadbalancer.healthcheck.interval=5s"
@@ -308,6 +308,65 @@ services:
       - consul
       - keycloak
       - config-server
+
+  class-service:
+    build:
+      context: ./class-service
+      dockerfile: Dockerfile
+    volumes:
+      - ./class-service:/app
+    ports:
+      - "${PORT_CLASSES}:8008"
+    command: uvicorn app.main:app --host 0.0.0.0 --port ${PORT_CLASSES} --reload
+    env_file: ./class-service/.env
+    environment:
+      - ENV=development
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.classes.rule=PathPrefix(`/classes`)"
+      - "traefik.http.routers.classes.entrypoints=web"
+      - "traefik.http.routers.classes.middlewares=classes-headers"
+      - "traefik.http.middlewares.classes-strip-prefix.stripprefix.prefixes=/classes"
+      - "traefik.http.middlewares.classes-headers.headers.customrequestheaders.X-From-Traefik=EzTo"
+      - "traefik.http.services.classes.loadbalancer.healthcheck.path=/health"
+      - "traefik.http.services.classes.loadbalancer.healthcheck.interval=5s"
+      - "traefik.http.services.classes.loadbalancer.healthcheck.timeout=3s"
+      - "traefik.http.services.classes.loadbalancer.server.port=${PORT_CLASSES}"
+    networks:
+      - ezto
+    depends_on:
+      - consul
+      - keycloak
+      - config-server
+  reservations-service:
+    build:
+      context: ./reservations-service
+      dockerfile: Dockerfile
+    volumes:
+      - ./reservations-service:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port ${PORT_RESERVATIONS} --reload
+    ports:
+      - "${PORT_RESERVATIONS}:8010"
+    env_file:
+      - ./reservations-service/.env  
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.reservations.rule=PathPrefix(`/reservations`)"
+      - "traefik.http.routers.reservations.entrypoints=web"
+      - "traefik.http.routers.reservations.middlewares=reservations-headers"
+      - "traefik.http.middlewares.reservations-headers.headers.customrequestheaders.X-From-Traefik=EzTo"
+      - "traefik.http.middlewares.reservations-strip-prefix.stripprefix.prefixes=/reservations" 
+      - "traefik.http.services.reservations.loadbalancer.healthcheck.path=/health"
+      - "traefik.http.services.reservations.loadbalancer.healthcheck.interval=5s"
+      - "traefik.http.services.reservations.loadbalancer.healthcheck.timeout=3s"
+      - "traefik.http.services.reservations.loadbalancer.server.port=${PORT_RESERVATIONS}"
+    networks:
+      - ezto
+    depends_on:
+      - consul
+      - keycloak
+      - config-server
+
 
 volumes:
   pgdata:
