@@ -9,14 +9,17 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.config.rule=PathPrefix(`/config`)"
       - "traefik.http.routers.config.entrypoints=web"
-      - "traefik.http.routers.config.middlewares=config-strip"
+      - "traefik.http.routers.config.middlewares=config-strip,config-headers"
       - "traefik.http.services.config.loadbalancer.server.port=8888"
       - "traefik.http.services.config.loadbalancer.healthcheck.path=/health"
       - "traefik.http.services.config.loadbalancer.healthcheck.interval=5s"
       - "traefik.http.services.config.loadbalancer.healthcheck.timeout=3s"
-      - "traefik.http.middlewares.strip-config.stripprefix.prefixes=/config"
+
+      # **Middleware StripPrefix**
+      - "traefik.http.middlewares.config-strip.stripprefix.prefixes=/config"
+      # Middleware extra para headers (opcional)
       - "traefik.http.middlewares.config-headers.headers.customrequestheaders.X-From-Traefik=EzTo"
-      - "traefik.http.routers.config.middlewares=config-headers"
+
 
     ports:
       - "${CONFIG_SERVER_PORT}:8888"

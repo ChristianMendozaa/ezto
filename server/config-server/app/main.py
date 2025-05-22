@@ -93,3 +93,7 @@ def get_config(app_name: str, profile: str, label: str = "main"):
             # aquí podrías, si quieres, descifrar automáticamente valores que estén marcados
             return data
     raise HTTPException(404, "Configuration not found")
+
+@app.get("/health")
+async def health():
+    return {"status": "UP"}
