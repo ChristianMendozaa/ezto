@@ -1,6 +1,9 @@
+// client/app/lib/auth-context.tsx
 "use client";
+
 import { createContext, useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useKeycloak } from "@react-keycloak/web";
 
 interface User {
   user_id: string;
@@ -10,7 +13,6 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
-  setUser: (user: User | null) => void;
   loading: boolean;
   logout: () => Promise<void>;
 }
@@ -18,59 +20,56 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+  const { keycloak, initialized } = useKeycloak();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
+  // Cuando Keycloak ya esté listo:
   useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const res = await fetch(process.env.NEXT_PUBLIC_BACKEND_URL +"/auth/me", { credentials: "include" });
-
-        if (!res.ok) throw new Error("No autenticado");
-        
-        const data = await res.json();
-        
-        setUser(data);
-      } catch (error) {
-        setUser(null);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchUser();
-  }, []);
-
-  useEffect(() => {
-    if (!loading && user) {
-      if (user.role === "gym_owner") {
-        router.replace("/dashboard");
-      } else {
-        router.replace("/client");
-      }
+    if (!initialized) return;
+    if (!keycloak?.authenticated) {
+      keycloak.login();
+      return;
     }
+    // extraemos datos del token
+    const parsed = keycloak.tokenParsed as any;
+    setUser({
+      user_id: parsed.sub,
+      email: parsed.email,
+      role: parsed.realm_access.roles.includes("gym_owner")
+        ? "gym_owner"
+        : "gym_member",
+    });
+    setLoading(false);
+  }, [initialized, keycloak]);
+
+  // redirige según rol
+  useEffect(() => {
+    if (loading || !user) return;
+    if (user.role === "gym_owner") router.replace("/dashboard");
+    else router.replace("/client");
   }, [loading, user, router]);
 
   const logout = async () => {
-    //  1. Borrar cualquier cookie de sesión previa antes de autenticarse
+    // 1) llamas a tu endpoint backend para borrar la cookie
     await fetch(process.env.NEXT_PUBLIC_BACKEND_URL + "/auth/logout", {
       method: "POST",
       credentials: "include",
     });
-    setUser(null);
-    router.replace("/login");
+    // 2) luego logout Keycloak
+    keycloak.logout({ redirectUri: window.location.origin });
   };
 
   return (
-    <AuthContext.Provider value={{ user, setUser, loading, logout }}>
+    <AuthContext.Provider value={{ user, loading, logout }}>
       {children}
     </AuthContext.Provider>
   );
 };
 
 export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) throw new Error("useAuth must be used within an AuthProvider");
-  return context;
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth must be inside an AuthProvider");
+  return ctx;
 };

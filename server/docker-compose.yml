@@ -93,6 +93,7 @@ services:
       - "traefik.http.routers.keycloak.entrypoints=web"
       - "traefik.http.services.keycloak.loadbalancer.server.port=8080"
 
+
   consul:
     image: hashicorp/consul:latest
     command: agent -dev -client=0.0.0.0
