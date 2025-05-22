@@ -1,36 +1,37 @@
-import { Inter } from "next/font/google"
-import "./globals.css"
-import { ThemeProvider } from "@/components/theme-provider"
-import { LanguageProvider } from "@/components/language-provider"
-import type React from "react"
-import { AuthProvider } from "@/lib/auth-context";
+"use client";
+import { ClientSidebar } from "@/components/client-sidebar";
+import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import type React from "react";
+import { useAuth } from "@/lib/auth-context";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
-const inter = Inter({ subsets: ["latin"] })
-
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+function ClientContent({ children }: { children: React.ReactNode }) {
   return (
-    <AuthProvider>
-      <html lang="es" suppressHydrationWarning>
-        <body className={inter.className}>
-          <LanguageProvider>
-            <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-              {children}
-            </ThemeProvider>
-          </LanguageProvider>
-        </body>
-      </html>
-    </AuthProvider>
-  )
+    <SidebarInset className="flex-1 overflow-hidden">
+      <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">{children}</main>
+    </SidebarInset>
+  );
 }
 
+export default function ClientLayout({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+  const router = useRouter();
 
+  useEffect(() => {
+    if (!loading && (!user || user.role !== "gym_member")) {
+      router.replace("/login");
+    }
+  }, [user, loading, router]);
 
-import './globals.css'
+  if (loading || !user) return <p>Cargando...</p>;
 
-export const metadata = {
-  generator: 'v0.dev'
-};
+  return (
+    <SidebarProvider>
+      <div className="flex h-screen overflow-hidden">
+        <ClientSidebar />
+        <ClientContent>{children}</ClientContent>
+      </div>
+    </SidebarProvider>
+  );
+}

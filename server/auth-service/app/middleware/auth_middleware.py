@@ -6,7 +6,13 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-EXCLUDED_PATHS = ["/auth/logout", "/auth/register", "/auth/login"]
+EXCLUDED_PATHS = [
+    "/auth/register", "/register",
+    "/auth/login",    "/login",
+    "/auth/logout",   "/logout",
+    "/health",        "/auth/health",
+]
+
 
 
 class AuthMiddleware(BaseHTTPMiddleware):

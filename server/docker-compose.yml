@@ -1,6 +1,33 @@
-version: "3.9"
-
 services:
+  config-server:
+    build:
+      context: ./config-server
+      dockerfile: Dockerfile
+    volumes:
+      - ./config-server:/app
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.config.rule=PathPrefix(`/config`)"
+      - "traefik.http.routers.config.entrypoints=web"
+      - "traefik.http.routers.config.middlewares=config-strip,config-headers"
+      - "traefik.http.services.config.loadbalancer.server.port=8888"
+      - "traefik.http.services.config.loadbalancer.healthcheck.path=/health"
+      - "traefik.http.services.config.loadbalancer.healthcheck.interval=5s"
+      - "traefik.http.services.config.loadbalancer.healthcheck.timeout=3s"
+
+      # **Middleware StripPrefix**
+      - "traefik.http.middlewares.config-strip.stripprefix.prefixes=/config"
+      # Middleware extra para headers (opcional)
+      - "traefik.http.middlewares.config-headers.headers.customrequestheaders.X-From-Traefik=EzTo"
+
+
+    ports:
+      - "${CONFIG_SERVER_PORT}:8888"
+    env_file:
+      - ./config-server/.env
+    networks:
+      - ezto
+
   traefik:
     image: traefik:v2.11
     command:
@@ -46,20 +73,21 @@ services:
 
   keycloak:
     image: quay.io/keycloak/keycloak:22.0.1
-    command: start-dev
-    ports:
-      - "8080:8080"
+    command: >
+      start-dev
+      --http-relative-path=/keycloak
+      --hostname-strict=false
     environment:
+      - KEYCLOAK_ADMIN=admin
+      - KEYCLOAK_ADMIN_PASSWORD=admin
       - KC_DB=postgres
       - KC_DB_URL=jdbc:postgresql://postgres:5432/keycloak
       - KC_DB_USERNAME=keycloak
       - KC_DB_PASSWORD=keycloak
-      - KEYCLOAK_ADMIN=${KEYCLOAK_ADMIN}
-      - KEYCLOAK_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD}
-    depends_on:
-      - postgres
     networks:
       - ezto
+    depends_on:
+      - postgres
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.keycloak.rule=PathPrefix(`/keycloak`)"
@@ -83,55 +111,82 @@ services:
     build:
       context: ./auth-service
       dockerfile: Dockerfile
-    env_file: .env
+    volumes:
+      - ./auth-service:/app
+    env_file:
+      - ./auth-service/.env  
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-    depends_on:
-      - consul
-      - keycloak
+    environment:
+      - ENV=development
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.auth.rule=PathPrefix(`/auth`)"
       - "traefik.http.routers.auth.entrypoints=web"
-      - "traefik.http.services.auth.loadbalancer.server.port=8000"
+      - "traefik.http.routers.auth.middlewares=auth-headers,strip-auth,retry-auth"
+      - "traefik.http.middlewares.auth-headers.headers.customrequestheaders.X-From-Traefik=EzTo"
+      - "traefik.http.middlewares.retry-auth.retry.attempts=3"
+      - "traefik.http.middlewares.retry-auth.retry.initialinterval=500ms"
+      - "traefik.http.middlewares.strip-auth.stripprefix.prefixes=/auth"
+      - "traefik.http.services.auth.loadbalancer.healthcheck.path=/health"
+      - "traefik.http.services.auth.loadbalancer.healthcheck.interval=5s"
+      - "traefik.http.services.auth.loadbalancer.healthcheck.timeout=3s"
     networks:
       - ezto
+    depends_on:
+      - keycloak
+      - consul
+      - config-server
 
   inventory-service:
     build:
       context: ./inventory-service
       dockerfile: Dockerfile
-    env_file: .env
+    env_file: ./inventory-service/.env
     command: uvicorn app.main:app --host 0.0.0.0 --port ${PORT_INVENTORY}
-    depends_on:
-      - consul
-      - keycloak
     volumes:
       - ./inventory-service:/app
-      - ./firebase_credentials.json:/app/firebase_credentials.json:ro
+    ports:
+      - "${PORT_INVENTORY}:8001"
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.inventory.rule=PathPrefix(`/inventory`)"
       - "traefik.http.routers.inventory.entrypoints=web"
+      - "traefik.http.routers.inventory.middlewares=inventory-headers"
+      - "traefik.http.middlewares.inventory-headers.headers.customrequestheaders.X-From-Traefik=EzTo"
+      - "traefik.http.services.inventory.loadbalancer.healthcheck.path=/health"
+      - "traefik.http.services.inventory.loadbalancer.healthcheck.interval=5s"
+      - "traefik.http.services.inventory.loadbalancer.healthcheck.timeout=3s"
       - "traefik.http.services.inventory.loadbalancer.server.port=${PORT_INVENTORY}"
     networks:
       - ezto
+    depends_on:
+      - consul
+      - keycloak
+      - config-server
 
   purchase-service:
     build:
       context: ./purchase-service
       dockerfile: Dockerfile
-    env_file: .env
+    env_file: ./purchase-service/.env
     command: uvicorn app.main:app --host 0.0.0.0 --port ${PORT_PURCHASE}
     depends_on:
       - consul
       - keycloak
+      - config-server
     volumes:
       - ./purchase-service:/app
-      - ./firebase_credentials.json:/app/firebase_credentials.json:ro
+    ports:
+      - "${PORT_PURCHASE}:8002"
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.purchase.rule=PathPrefix(`/purchase`)"
       - "traefik.http.routers.purchase.entrypoints=web"
+      - "traefik.http.routers.purchase.middlewares=supplier-headers"
+      - "traefik.http.middlewares.purchase-headers.headers.customrequestheaders.X-From-Traefik=EzTo"
+      - "traefik.http.services.purchase.loadbalancer.healthcheck.path=/health"
+      - "traefik.http.services.purchase.loadbalancer.healthcheck.interval=5s"
+      - "traefik.http.services.purchase.loadbalancer.healthcheck.timeout=3s"
       - "traefik.http.services.purchase.loadbalancer.server.port=${PORT_PURCHASE}"
     networks:
       - ezto
@@ -140,89 +195,179 @@ services:
     build:
       context: ./shop-service
       dockerfile: Dockerfile
-    env_file: .env
-    command: uvicorn app.main:app --host 0.0.0.0 --port ${PORT_SHOP}
-    depends_on:
-      - consul
-      - keycloak
     volumes:
       - ./shop-service:/app
-      - ./firebase_credentials.json:/app/firebase_credentials.json:ro
+    ports:
+      - "${PORT_SHOP}:8003"
+    env_file: ./shop-service/.env
+    command: uvicorn app.main:app --host 0.0.0.0 --port ${PORT_SHOP}
+    environment:
+      - ENV=development
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.shop.rule=PathPrefix(`/shop`)"
       - "traefik.http.routers.shop.entrypoints=web"
+      - "traefik.http.routers.shop.middlewares=shop-headers"
+      - "traefik.http.middlewares.shop-headers.headers.customrequestheaders.X-From-Traefik=EzTo"
+      - "traefik.http.services.shop.loadbalancer.healthcheck.path=/health"
+      - "traefik.http.services.shop.loadbalancer.healthcheck.interval=5s"
+      - "traefik.http.services.shop.loadbalancer.healthcheck.timeout=3s"
       - "traefik.http.services.shop.loadbalancer.server.port=${PORT_SHOP}"
     networks:
       - ezto
+    depends_on:
+      - consul
+      - keycloak
+      - config-server
 
   supplier-service:
     build:
       context: ./supplier-service
       dockerfile: Dockerfile
-    env_file: .env
-    command: uvicorn app.main:app --host 0.0.0.0 --port ${PORT_SUPPLIER}
-    depends_on:
-      - consul
-      - keycloak
     volumes:
       - ./supplier-service:/app
-      - ./firebase_credentials.json:/app/firebase_credentials.json:ro
+    ports:
+      - "${PORT_SUPPLIER}:8005"
+    env_file: ./supplier-service/.env
+    command: uvicorn app.main:app --host 0.0.0.0 --port ${PORT_SUPPLIER}
+    environment:
+      - ENV=development
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.supplier.rule=PathPrefix(`/supplier`)"
       - "traefik.http.routers.supplier.entrypoints=web"
+      - "traefik.http.routers.supplier.middlewares=supplier-headers"
+      - "traefik.http.middlewares.supplier-headers.headers.customrequestheaders.X-From-Traefik=EzTo"
+      - "traefik.http.services.supplier.loadbalancer.healthcheck.path=/health"
+      - "traefik.http.services.supplier.loadbalancer.healthcheck.interval=5s"
+      - "traefik.http.services.supplier.loadbalancer.healthcheck.timeout=3s"
       - "traefik.http.services.supplier.loadbalancer.server.port=${PORT_SUPPLIER}"
     networks:
       - ezto
+    depends_on:
+      - consul
+      - keycloak
+      - config-server
+
 
   promotions-service:
     build:
       context: ./promotions-service
       dockerfile: Dockerfile
     volumes:
-      - ./promotions-service:/app
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
+    - ./promotions-service:/app
+    ports:
+      - "${PORT_PROMOTIONS}:8005"
+    command: uvicorn app.main:app --host 0.0.0.0 --port ${PORT_PROMOTIONS} --reload
+    env_file: ./promotions-service/.env
     environment:
       - ENV=development
-    depends_on:
-      - consul
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.promotions.rule=PathPrefix(`/promotions`)"
       - "traefik.http.routers.promotions.entrypoints=web"
       - "traefik.http.routers.promotions.middlewares=promotions-headers"
+      - "traefik.http.middlewares.promotions-strip-prefix.stripprefix.prefixes=/promotions"
       - "traefik.http.middlewares.promotions-headers.headers.customrequestheaders.X-From-Traefik=EzTo"
       - "traefik.http.services.promotions.loadbalancer.healthcheck.path=/health"
       - "traefik.http.services.promotions.loadbalancer.healthcheck.interval=5s"
       - "traefik.http.services.promotions.loadbalancer.healthcheck.timeout=3s"
-      - "traefik.http.services.promotions.loadbalancer.server.port=8001"
+      - "traefik.http.services.promotions.loadbalancer.server.port=${PORT_PROMOTIONS}"
     networks:
       - ezto
-
-  usermembership-service:
-    build:
-      context: ./usermembership-service
-      dockerfile: Dockerfile
-    volumes:
-      - ./usermembership-service:/app
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8002 --reload
-    environment:
-      - ENV=development
     depends_on:
       - consul
+      - keycloak
+      - config-server
+
+  usermemberships-service:
+    build:
+      context: ./usermemberships-service
+      dockerfile: Dockerfile
+    volumes:
+      - ./usermemberships-service:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port ${PORT_USERMEMBERSHIP} --
+    ports:
+      - "${PORT_USERMEMBERSHIP}:8006"
+    env_file:
+      - ./usermemberships-service/.env  
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.membership.rule=PathPrefix(`/usermemberships`)"
-      - "traefik.http.routers.membership.entrypoints=web"
-      - "traefik.http.routers.membership.middlewares=membership-headers"
-      - "traefik.http.middlewares.membership-headers.headers.customrequestheaders.X-From-Traefik=EzTo"
-      - "traefik.http.services.membership.loadbalancer.healthcheck.path=/health"
-      - "traefik.http.services.membership.loadbalancer.healthcheck.interval=5s"
-      - "traefik.http.services.membership.loadbalancer.healthcheck.timeout=3s"
-      - "traefik.http.services.membership.loadbalancer.server.port=8002"
+      - "traefik.http.routers.usermemberships.rule=PathPrefix(`/usermemberships`)"
+      - "traefik.http.routers.usermemberships.entrypoints=web"
+      - "traefik.http.routers.usermemberships.middlewares=usermemberships-headers"
+      - "traefik.http.middlewares.usermemberships-headers.headers.customrequestheaders.X-From-Traefik=EzTo"
+      - "traefik.http.middlewares.usermemberships-strip-prefix.stripprefix.prefixes=/usermemberships" 
+      - "traefik.http.services.usermemberships.loadbalancer.healthcheck.path=/health"
+      - "traefik.http.services.usermemberships.loadbalancer.healthcheck.interval=5s"
+      - "traefik.http.services.usermemberships.loadbalancer.healthcheck.timeout=3s"
+      - "traefik.http.services.usermemberships.loadbalancer.server.port=${PORT_USERMEMBERSHIP}"
+
     networks:
       - ezto
+    depends_on:
+      - consul
+      - keycloak
+      - config-server
+
+  class-service:
+    build:
+      context: ./class-service
+      dockerfile: Dockerfile
+    volumes:
+      - ./class-service:/app
+    ports:
+      - "${PORT_CLASSES}:8008"
+    command: uvicorn app.main:app --host 0.0.0.0 --port ${PORT_CLASSES} --reload
+    env_file: ./class-service/.env
+    environment:
+      - ENV=development
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.classes.rule=PathPrefix(`/classes`)"
+      - "traefik.http.routers.classes.entrypoints=web"
+      - "traefik.http.routers.classes.middlewares=classes-headers"
+      - "traefik.http.middlewares.classes-strip-prefix.stripprefix.prefixes=/classes"
+      - "traefik.http.middlewares.classes-headers.headers.customrequestheaders.X-From-Traefik=EzTo"
+      - "traefik.http.services.classes.loadbalancer.healthcheck.path=/health"
+      - "traefik.http.services.classes.loadbalancer.healthcheck.interval=5s"
+      - "traefik.http.services.classes.loadbalancer.healthcheck.timeout=3s"
+      - "traefik.http.services.classes.loadbalancer.server.port=${PORT_CLASSES}"
+    networks:
+      - ezto
+    depends_on:
+      - consul
+      - keycloak
+      - config-server
+  reservations-service:
+    build:
+      context: ./reservations-service
+      dockerfile: Dockerfile
+    volumes:
+      - ./reservations-service:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port ${PORT_RESERVATIONS} --reload
+    ports:
+      - "${PORT_RESERVATIONS}:8010"
+    env_file:
+      - ./reservations-service/.env  
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.reservations.rule=PathPrefix(`/reservations`)"
+      - "traefik.http.routers.reservations.entrypoints=web"
+      - "traefik.http.routers.reservations.middlewares=reservations-headers"
+      - "traefik.http.middlewares.reservations-headers.headers.customrequestheaders.X-From-Traefik=EzTo"
+      - "traefik.http.middlewares.reservations-strip-prefix.stripprefix.prefixes=/reservations" 
+      - "traefik.http.services.reservations.loadbalancer.healthcheck.path=/health"
+      - "traefik.http.services.reservations.loadbalancer.healthcheck.interval=5s"
+      - "traefik.http.services.reservations.loadbalancer.healthcheck.timeout=3s"
+      - "traefik.http.services.reservations.loadbalancer.server.port=${PORT_RESERVATIONS}"
+    networks:
+      - ezto
+    depends_on:
+      - consul
+      - keycloak
+      - config-server
+
 
 volumes:
   pgdata:
