@@ -73,27 +73,26 @@ services:
 
   keycloak:
     image: quay.io/keycloak/keycloak:22.0.1
-    command:
-      - start-dev
-      - "--http-relative-path=/keycloak"
-    ports:
-      - "8080:8080"      # Solo para debugging; Traefik hará el proxy
+    command: >
+      start-dev
+      --http-relative-path=/keycloak
+      --hostname-strict=false
     environment:
-      - KEYCLOAK_ADMIN=${KEYCLOAK_ADMIN}
-      - KEYCLOAK_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD}
+      - KEYCLOAK_ADMIN=admin
+      - KEYCLOAK_ADMIN_PASSWORD=admin
+      - KC_DB=postgres
+      - KC_DB_URL=jdbc:postgresql://postgres:5432/keycloak
+      - KC_DB_USERNAME=keycloak
+      - KC_DB_PASSWORD=keycloak
     networks:
       - ezto
+    depends_on:
+      - postgres
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.keycloak.rule=PathPrefix(`/keycloak`)"
       - "traefik.http.routers.keycloak.entrypoints=web"
-      - "traefik.http.routers.keycloak.middlewares=keycloak-strip"
-      - "traefik.http.middlewares.keycloak-strip.stripprefix.prefixes=/keycloak"
       - "traefik.http.services.keycloak.loadbalancer.server.port=8080"
-      - "traefik.http.services.keycloak.loadbalancer.healthcheck.path=/keycloak/health"
-      - "traefik.http.services.keycloak.loadbalancer.healthcheck.interval=5s"
-      - "traefik.http.services.keycloak.loadbalancer.healthcheck.timeout=3s"
-
 
   consul:
     image: hashicorp/consul:latest
