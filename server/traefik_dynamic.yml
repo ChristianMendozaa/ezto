@@ -4,6 +4,13 @@ http:
       loadBalancer:
         servers:
           - url: "http://config-server:${CONFIG_SERVER_PORT}"
+        healthCheck:
+          path: "/health"
+          interval: "5s"
+          timeout: "3s"
+        passHostHeader: true
+        circuitBreaker:
+          expression: "NetworkErrorRatio() > 0.5"
 
     auth-service:
       loadBalancer:

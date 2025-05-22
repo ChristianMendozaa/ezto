@@ -15,6 +15,13 @@ from app.controllers.usermembership_controller import router as user_membership_
 # Manejo de errores
 from app.utils.exception_handlers import global_exception_dispatcher, request_validation_exception_handler
 
+from .config_loader import fetch_config, PROFILE
+
+cfg = fetch_config()
+# ahora vuelca cfg en variables de entorno o en tu pydantic BaseSettings
+HOST = cfg.get("host", "0.0.0.0")
+PORT = int(cfg.get("port", 8006))
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -95,5 +102,10 @@ app.include_router(user_membership_router, prefix="/usermemberships", tags=["Mem
 def health_check():
     return {"status": "ok"}
 # 📌 Rutas del microservicio
+
+@app.get("/config-health")
+def config_health():
+    # Devuelve el profile y todo el cfg para inspección
+    return {"status": "up", "config_profile": PROFILE, "config": cfg}
 
 
