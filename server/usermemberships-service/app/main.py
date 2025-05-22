@@ -18,7 +18,7 @@ from app.utils.exception_handlers import global_exception_dispatcher, request_va
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    register_service_in_consul("usermembership-service", 8002)
+    register_service_in_consul("usermembership-service", 8006)
     yield
 app = FastAPI(
     title="Gestión de Membresías Activas - Plataforma EzTo",

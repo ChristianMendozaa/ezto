@@ -1,33 +1,45 @@
-import os
-from dotenv import load_dotenv
+# app/utils/keycloak_config.py
+
+from app.config_loader import fetch_config, decrypt_value
+
+cfg = fetch_config().get("keycloak", {})
+def _strip_and_decrypt(field_name: str) -> str:
+    raw = cfg.get(field_name, "")
+
+    if raw.startswith("{cipher}"):
+        token = raw[len("{cipher}"):]
+        plain = decrypt_value(token)
+   
+        return plain
+    return raw
+
+# 2) Extrae y desencripta los valores cifrados
+server_url    = cfg["url"].rstrip("/")
+realm         = cfg["realm"]
+client_id     = cfg["client_id"]
+client_secret = _strip_and_decrypt("client_secret")
+admin_user    = cfg.get("username", "admin")
+admin_pass    = _strip_and_decrypt("password")
+
+# 3) Inicializa KeycloakAdmin
 from keycloak import KeycloakAdmin, KeycloakOpenID
 
-# Cargar las variables de entorno desde el archivo .env
-load_dotenv()
-
-# Obtener variables del entorno
-KEYCLOAK_URL            = os.getenv("KEYCLOAK_SERVER_URL").rstrip("/")
-KEYCLOAK_REALM          = os.getenv("KEYCLOAK_REALM")
-KEYCLOAK_ADMIN_USER     = os.getenv("KEYCLOAK_ADMIN_USER")
-KEYCLOAK_ADMIN_PASSWORD = os.getenv("KEYCLOAK_ADMIN_PASSWORD")
-KEYCLOAK_CLIENT_ID      = os.getenv("KEYCLOAK_CLIENT_ID")
-KEYCLOAK_CLIENT_SECRET  = os.getenv("KEYCLOAK_CLIENT_SECRET")
-
-# Admin client (para administración de Keycloak)
 keycloak_admin = KeycloakAdmin(
-    server_url=f"{KEYCLOAK_URL}/",
-    username=KEYCLOAK_ADMIN_USER,
-    password=KEYCLOAK_ADMIN_PASSWORD,
-    realm_name=KEYCLOAK_REALM,
+    server_url=server_url + "/",
+    username=admin_user,
+    password=admin_pass,
+    realm_name=realm,
     client_id="admin-cli",
-    verify=False
+    verify=True
 )
+print("[keycloak_config] Initialized KeycloakAdmin")
 
-# Cliente para autenticación OpenID (para el flujo de login)
+# 4) Inicializa KeycloakOpenID
 keycloak_openid = KeycloakOpenID(
-    server_url=f"{KEYCLOAK_URL}/",
-    realm_name=KEYCLOAK_REALM,
-    client_id=KEYCLOAK_CLIENT_ID,
-    client_secret_key=KEYCLOAK_CLIENT_SECRET,
-    verify=False
+    server_url=server_url + "/",
+    realm_name=realm,
+    client_id=client_id,
+    client_secret_key=client_secret,
+    verify=True
 )
+print("[keycloak_config] Initialized KeycloakOpenID")

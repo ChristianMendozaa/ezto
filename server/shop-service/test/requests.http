@@ -1,0 +1,262 @@
+######################################################################
+# INVENTORY ENDPOINTS
+######################################################################
+
+### [Inventory] Crear movimiento - Éxito
+POST http://localhost:8000/inventory/
+Content-Type: application/json
+Cookie: authToken=validtoken
+
+{
+  "product_id": "6489a5d2fae8b1b9f7654321",
+  "movement_type": "entrada",
+  "quantity": 50,
+  "reason": "Compra a proveedor SUP-001",
+  "reference_id": "6489a5d2fae8b1b9f7654321",
+  "movement_date": "2023-06-15T14:30:00",
+  "responsible_id": "6489a5d2fae8b1b9f7654321"
+}
+
+### [Inventory] Crear movimiento - Error: Cantidad <= 0
+POST http://localhost:8000/inventory/
+Content-Type: application/json
+Cookie: authToken=validtoken
+
+{
+  "product_id": "6489a5d2fae8b1b9f7654321",
+  "movement_type": "entrada",
+  "quantity": 0,
+  "reason": "Compra a proveedor SUP-001",
+  "reference_id": "6489a5d2fae8b1b9f7654321",
+  "movement_date": "2023-06-15T14:30:00",
+  "responsible_id": "6489a5d2fae8b1b9f7654321"
+}
+
+### [Inventory] Crear movimiento - Error: Campo vacío (product_id)
+POST http://localhost:8000/inventory/
+Content-Type: application/json
+Cookie: authToken=validtoken
+
+{
+  "product_id": "   ",
+  "movement_type": "entrada",
+  "quantity": 50,
+  "reason": "Compra a proveedor SUP-001",
+  "reference_id": "6489a5d2fae8b1b9f7654321",
+  "movement_date": "2023-06-15T14:30:00",
+  "responsible_id": "6489a5d2fae8b1b9f7654321"
+}
+
+### [Inventory] Listar movimientos - Éxito
+GET http://localhost:8000/inventory/
+Cookie: authToken=validtoken
+
+### [Inventory] Obtener movimiento por ID - Éxito
+GET http://localhost:8000/inventory/6489a5d2fae8b1b9f7654321
+Cookie: authToken=validtoken
+
+### [Inventory] Obtener movimiento por ID - Error (No encontrado)
+GET http://localhost:8000/inventory/nonexistent-id
+Cookie: authToken=validtoken
+
+
+######################################################################
+# PRODUCT ENDPOINTS
+######################################################################
+
+### [Product] Crear producto - Éxito (CORREGIDO)
+### [Product] Crear producto - Éxito (VERIFICADO)
+POST http://localhost:8000/products/
+Content-Type: application/json
+Cookie: authToken=validtoken
+
+{
+  "name": "Proteína Whey 2kg",
+  "sku": "PROT-WHEY-01",
+  "category": "suplementos",
+  "purchase_price": 25.99,
+  "sale_price": 39.99,
+  "supplier_id": "6489a5d2fae8b1b9f7654321",
+  "current_stock": 50,
+  "min_stock": 10,
+  "description": "Proteína de suero de leche isolate, sabor vainilla",
+  "expiration_date": "2025-12-31",
+  "barcode": "123456789012",
+  "status": "activo",
+  "image_base64": "iVBORw0KGgoAAAANSUhEUgAAA..." 
+}
+### [Product] Crear producto - Error: sale_price <= purchase_price (CORREGIDO)
+POST http://localhost:8000/products/
+Content-Type: application/json
+Cookie: authToken=validtoken
+
+{
+  "name": "Proteína Whey 2kg",
+  "sku": "PROT-WHEY-01",
+  "category": "suplementos",
+  "purchase_price": 25.99,
+  "sale_price": 25.99, 
+  "supplier_id": "a2466f91-7415-4c91-9829-02796751232b",
+  "current_stock": 50,
+  "min_stock": 10,
+  "description": "Proteína de suero de leche isolate, sabor vainilla",
+  "status": "activo"
+}
+
+### [Product] Crear producto - Error: SKU inválido (CORREGIDO)
+POST http://localhost:8000/products/
+Content-Type: application/json
+Cookie: authToken=validtoken
+
+{
+  "name": "Proteína Whey 2kg",
+  "sku": "invalido",  
+  "category": "suplementos",
+  "purchase_price": 25.99,
+  "sale_price": 39.99,
+  "supplier_id": "6489a5d2fae8b1b9f7654321",
+  "current_stock": 50,
+  "min_stock": 10,
+  "status": "activo"
+}
+
+### [Product] Listar productos - Éxito
+GET http://localhost:8001/products/
+Cookie: authToken=validtoken
+
+### [Product] Obtener producto por ID - Éxito
+GET http://localhost:8000/products/6489a5d2fae8b1b9f7654321
+Cookie: authToken=validtoken
+
+### [Product] Obtener producto por ID - Error (No encontrado)
+GET http://localhost:8000/products/nonexistent-id
+Cookie: authToken=validtoken
+
+
+######################################################################
+# PURCHASE (SALE) ENDPOINTS
+######################################################################
+
+### [Purchase] Crear venta - Éxito (CORREGIDO)
+POST http://localhost:8000/purchases/
+Content-Type: application/json
+Cookie: authToken=validtoken
+
+{
+  "client_id": "6489a5d2fae8b1b9f7654321",
+  "items": [
+    {
+      "product_id": "6489a5d2fae8b1b9f7654321",
+      "quantity": 2,
+      "unit_price": 39.99,
+      "discount": 5.00
+    }
+  ],
+  "payment_method": "tarjeta_credito",
+  "notes": "Cliente preferencial"
+}
+
+### [Purchase] Crear venta - Error: client_id vacío (CORREGIDO)
+POST http://localhost:8000/purchases/
+Content-Type: application/json
+Cookie: authToken=validtoken
+
+{
+  "client_id": "   ", 
+  "items": [
+    {
+      "product_id": "6489a5d2fae8b1b9f7654321",
+      "quantity": 2,
+      "unit_price": 39.99,
+      "discount": 5.00
+    }
+  ],
+  "payment_method": "tarjeta_credito",
+  "notes": "Cliente preferencial"
+}
+
+### [Purchase] Crear venta - Error: Lista de ítems vacía (CORREGIDO)
+POST http://localhost:8000/purchases/
+Content-Type: application/json
+Cookie: authToken=validtoken
+
+{
+  "client_id": "6489a5d2fae8b1b9f7654321",
+  "items": [],  
+  "payment_method": "tarjeta_credito",
+  "notes": "Cliente preferencial"
+}
+
+### [Purchase] Listar ventas - Éxito
+GET http://localhost:8001/purchases/
+Cookie: authToken=validtoken
+
+### [Purchase] Obtener venta por ID - Éxito
+GET http://localhost:8000/purchases/6489a5d2fae8b1b9f7654321
+Cookie: authToken=validtoken
+
+### [Purchase] Obtener venta por ID - Error (No encontrado)
+GET http://localhost:8000/purchases/nonexistent-id
+Cookie: authToken=validtoken
+
+
+######################################################################
+# SUPPLIER ENDPOINTS
+######################################################################
+
+### [Supplier] Crear proveedor - Éxito (CORREGIDO)
+POST http://localhost:8000/suppliers/
+Content-Type: application/json
+Cookie: authToken=validtoken
+
+{
+  "name": "Suplementos Fitness S.A.",
+  "contact_email": "contacto@suplementosfitness.com",
+  "phone": "+573001234567",  
+  "address": "Calle 123 #45-67, Bogotá, Colombia",
+  "tax_id": "123456789-1",
+  "payment_terms": "30 días",
+  "status": "activo"
+}
+
+### [Supplier] Crear proveedor - Error: Email inválido (CORREGIDO)
+POST http://localhost:8000/suppliers/
+Content-Type: application/json
+Cookie: authToken=validtoken
+
+{
+  "name": "Suplementos Fitness S.A.",
+  "contact_email": "invalid-email",  
+  "phone": "+573001234567",
+  "address": "Calle 123 #45-67, Bogotá, Colombia",
+  "tax_id": "123456789-1",
+  "payment_terms": "30 días",
+  "status": "activo"
+}
+
+### [Supplier] Crear proveedor - Error: Nombre vacío (CORREGIDO)
+POST http://localhost:8001/suppliers/
+Content-Type: application/json
+Cookie: authToken=validtoken
+
+{
+  "name": "   ",  
+  "contact_email": "contacto@suplementosfitness.com",
+  "phone": "+573001234567",
+  "address": "Calle 123 #45-67, Bogotá, Colombia",
+  "tax_id": "123456789-1",
+  "payment_terms": "30 días",
+  "status": "activo"
+}
+
+### [Supplier] Listar proveedores - Éxito
+GET http://localhost:8000/suppliers/
+Cookie: authToken=validtoken
+
+### [Supplier] Obtener proveedor por ID - Éxito
+GET http://localhost:8000/suppliers/6489a5d2fae8b1b9f7654321
+Cookie: authToken=validtoken
+
+### [Supplier] Obtener proveedor por ID - Error (No encontrado)
+GET http://localhost:8000/suppliers/nonexistent-id
+Cookie: authToken=validtoken

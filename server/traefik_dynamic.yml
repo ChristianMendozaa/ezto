@@ -1,4 +1,198 @@
-http:
+http:  
+  services:
+    config-server:
+      loadBalancer:
+        servers:
+          - url: "http://config-server:${CONFIG_SERVER_PORT}"
+
+    auth-service:
+      loadBalancer:
+        servers:
+          - url: "http://auth-service:8000"
+        healthCheck:
+          path: "/health"
+          interval: "5s"
+          timeout: "3s"
+        passHostHeader: true
+        circuitBreaker:
+          expression: "NetworkErrorRatio() > 0.5"
+
+    inventory-service:
+      loadBalancer:
+        servers:
+          - url: "http://inventory-service:${PORT_INVENTORY}"
+        healthCheck:
+          path: "/health"
+          interval: "5s"
+          timeout: "3s"
+        passHostHeader: true
+        circuitBreaker:
+          expression: "NetworkErrorRatio() > 0.5"
+
+    purchase-service:
+      loadBalancer:
+        servers:
+          - url: "http://purchase-service:${PORT_PURCHASE}"
+        healthCheck:
+          path: "/health"
+          interval: "5s"
+          timeout: "3s"
+        passHostHeader: true
+        circuitBreaker:
+          expression: "NetworkErrorRatio() > 0.5"
+
+    shop-service:
+      loadBalancer:
+        servers:
+          - url: "http://shop-service:${PORT_SHOP}"
+        healthCheck:
+          path: "/health"
+          interval: "5s"
+          timeout: "3s"
+        passHostHeader: true
+        circuitBreaker:
+          expression: "NetworkErrorRatio() > 0.5"
+
+    supplier-service:
+      loadBalancer:
+        servers:
+          - url: "http://supplier-service:${PORT_SUPPLIER}"
+        healthCheck:
+          path: "/health"
+          interval: "5s"
+          timeout: "3s"
+        passHostHeader: true
+        circuitBreaker:
+          expression: "NetworkErrorRatio() > 0.5"
+
+    promotions-service:
+      loadBalancer:
+        servers:
+          - url: "http://promotions-service:${PORT_PROMOTIONS}"
+        healthCheck:
+          path: "/health"
+          interval: "5s"
+          timeout: "3s"
+        passHostHeader: true
+        circuitBreaker:
+          expression: "NetworkErrorRatio() > 0.5"
+
+    usermemberships-service:
+      loadBalancer:
+        servers:
+          - url: "http://usermembership-service:${PORT_USERMEMBERSHIP}"
+        healthCheck:
+          path: "/health"
+          interval: "5s"
+          timeout: "3s"
+        passHostHeader: true
+        circuitBreaker:
+          expression: "NetworkErrorRatio() > 0.5"
+
+    keycloak:
+      loadBalancer:
+        servers:
+          - url: "http://keycloak:8080"
+        healthCheck:
+          path: "/"
+          interval: "5s"
+          timeout: "3s"
+        passHostHeader: true
+        circuitBreaker:
+          expression: "NetworkErrorRatio() > 0.5"
+
+    consul:
+      loadBalancer:
+        servers:
+          - url: "http://consul:8500"
+        healthCheck:
+          path: "/v1/status/leader"
+          interval: "5s"
+          timeout: "3s"
+        passHostHeader: true
+        circuitBreaker:
+          expression: "NetworkErrorRatio() > 0.5"
+
+  routers:
+   
+    config-api:
+      rule: "PathPrefix(`/config`)"
+      service: config-server
+      entryPoints:
+        - web
+
+    auth:
+      rule: "PathPrefix(`/auth`)"
+      service: auth-service
+      entryPoints:
+        - web
+      middlewares:
+        - retry-auth
+
+    inventory:
+      rule: "PathPrefix(`/inventory`)"
+      service: inventory-service
+      entryPoints:
+        - web
+      middlewares:
+        - retry-auth
+
+    purchase:
+      rule: "PathPrefix(`/purchase`)"
+      service: purchase-service
+      entryPoints:
+        - web
+      middlewares:
+        - retry-auth
+
+    shop:
+      rule: "PathPrefix(`/shop`)"
+      service: shop-service
+      entryPoints:
+        - web
+      middlewares:
+        - retry-auth
+
+    supplier:
+      rule: "PathPrefix(`/supplier`)"
+      service: supplier-service
+      entryPoints:
+        - web
+      middlewares:
+        - retry-auth
+
+    promotions:
+      rule: "PathPrefix(`/promotions`)"
+      service: promotions-service
+      entryPoints:
+        - web
+      middlewares:
+        - retry-promotions
+
+    usermemberships:
+      rule: "PathPrefix(`/usermemberships`)"
+      service: usermembership-service
+      entryPoints:
+        - web
+      middlewares:
+        - retry-usermembership
+
+    keycloak:
+      rule: "PathPrefix(`/keycloak`)"
+      service: keycloak
+      entryPoints:
+        - web
+      middlewares:
+        - retry-auth
+
+    consul:
+      rule: "PathPrefix(`/consul`)"
+      service: consul
+      entryPoints:
+        - web
+      middlewares:
+        - retry-auth
+
   middlewares:
     retry-auth:
       retry:
@@ -11,6 +205,11 @@ http:
         initialInterval: 500ms
 
     retry-usermemberships:
+      retry:
+        attempts: 3
+        initialInterval: 500ms
+
+    retry-supplier:
       retry:
         attempts: 3
         initialInterval: 500ms

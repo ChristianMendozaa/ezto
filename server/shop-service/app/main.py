@@ -1,95 +1,71 @@
-# main.py
+# shop-service/app/main.py
 
-from fastapi import FastAPI, Request, Depends
+import os, logging
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse
-from starlette.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 
-# Middlewares personalizados
-from app.middleware.auth_middleware import AuthMiddleware
-from app.middleware.rate_limit_middleware import RateLimitMiddleware
-
-# Controladores
 from app.controllers.product_controller import router as product_router
-from app.controllers.purchase_controller import router as purchase_router
-from app.controllers.inventory_controller import router as inventory_router
-from app.controllers.supplier_controller import router as supplier_router 
+from app.utils.service_registry import register_service, deregister_service
 
+# --- logging & config ---
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+CONSUL_ADDR  = os.getenv("CONSUL_ADDR", "http://consul:8500")
+PORT         = int(os.getenv("PORT", 8003))
+SERVICE_NAME = "shop-service"
+service_id   = None
+
+# --- app ---
 app = FastAPI(
-    title="Gestión de Inventario - Plataforma EzTo",
-    description="Microservicio para gestión de inventario y registro de compras en gimnasios. "
-                "Incluye control de stock, movimiento de productos y transacciones comerciales.",
-    version="1.0.0",
-    contact={
-        "name": "Equipo EzTo",
-        "url": "https://eztoplatform.com/contact",
-        "email": "support@eztoplatform.com",
-    },
-    license_info={
-        "name": "MIT License",
-        "url": "https://opensource.org/licenses/MIT",
-    },
-    openapi_tags=[
-        {"name": "Productos", "description": "Gestión de productos del inventario"},
-        {"name": "Compras", "description": "Registro y seguimiento de transacciones comerciales"},
-        {"name": "Inventario", "description": "Operaciones de control de stock y movimientos"},
-        {"name": "Proveedores", "description": "Gestión de proveedores"},
-        {"name": "Reportes", "description": "Generación de reportes de inventario"},
-    ]
+  title="Productos Service",
+  description="Microservicio para gestión de productos",
+  version="1.0.0",
+  openapi_tags=[{"name":"Productos"}]
 )
 
-# Configuración de CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Ajusta según tu frontend
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Middlewares esenciales
-app.add_middleware(RateLimitMiddleware)
+# --- middlewares ---
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 app.add_middleware(GZipMiddleware, minimum_size=1000)
-app.add_middleware(AuthMiddleware)
-app.add_middleware(
-    TrustedHostMiddleware,
-    allowed_hosts=["*"]  # Ajusta si necesitas restringir hosts
-)
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=["*"])
 
-# Middleware de seguridad de headers
-@app.middleware("http")
-async def security_headers(request: Request, call_next):
-    response = await call_next(request)
-    security_headers = {
-        "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
-        "Content-Security-Policy": (
-            "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
-            "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
-            "img-src 'self' data: https://fastapi.tiangolo.com; "
-            "font-src 'self'; "
-            "connect-src 'self'; "
-            "frame-ancestors 'self';"
-        ),
-        "X-Content-Type-Options": "nosniff",
-        "X-Frame-Options": "DENY",
-        "X-XSS-Protection": "1; mode=block",
-        "Referrer-Policy": "strict-origin-when-cross-origin",
-        "Permissions-Policy": "geolocation=(), microphone=(), camera=()"
-    }
-    response.headers.update(security_headers)
-    return response
+# --- errores ---
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(req: Request, exc: RequestValidationError):
+    logger.error(f"Validation error: {exc}")
+    return JSONResponse(status_code=422, content={"detail":"Error en la validación de datos."})
 
-# Registro de routers principales
+@app.exception_handler(Exception)
+async def general_exception_handler(req: Request, exc: Exception):
+    logger.error(f"Unexpected error: {exc}")
+    return JSONResponse(status_code=500, content={"detail":"Error interno, intente más tarde."})
+
+# --- rutas ---
 app.include_router(product_router, prefix="/products", tags=["Productos"])
-app.include_router(purchase_router, prefix="/purchases", tags=["Compras"])
-app.include_router(inventory_router, prefix="/inventory", tags=["Inventario"])
-app.include_router(supplier_router, prefix="/suppliers", tags=["Proveedores"])  
-@app.get("/", include_in_schema=False)
-async def root():
-    return RedirectResponse(url="/docs")
+
 @app.get("/health", tags=["Monitoreo"])
 async def health_check():
-    return {"status": "ok", "service": "inventory-service"}
+    return {"status":"ok","service":SERVICE_NAME}
 
+# --- Consul ---
+@app.on_event("startup")
+async def on_startup():
+    global service_id
+    service_id = register_service(
+      consul_addr=CONSUL_ADDR,
+      service_name=SERVICE_NAME,
+      service_port=PORT
+    )
+
+@app.on_event("shutdown")
+async def on_shutdown():
+    if service_id:
+        deregister_service(CONSUL_ADDR, service_id)
+
+if __name__=="__main__":
+    import uvicorn
+    uvicorn.run("app.main:app", host="0.0.0.0", port=PORT, reload=True)

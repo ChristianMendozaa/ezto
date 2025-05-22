@@ -10,6 +10,13 @@ from app.middleware.rate_limit_middleware import RateLimitMiddleware
 from app.services.consul_service import register_service, deregister_service
 from contextlib import asynccontextmanager
 
+from app.config_loader import fetch_config, PROFILE
+
+cfg = fetch_config()
+# ahora vuelca cfg en variables de entorno o en tu pydantic BaseSettings
+HOST = cfg.get("host", "0.0.0.0")
+PORT = int(cfg.get("port", 8000))
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     register_service()
@@ -19,9 +26,9 @@ async def lifespan(app: FastAPI):
 def create_app(testing: bool = False) -> FastAPI:
     app = FastAPI(
         title="Autenticación y Registro - Plataforma EzTo",
-        description="Microservicio para autenticación y registro de usuarios con FastAPI y Firebase. "
-                    "Incluye autenticación basada en JWT, protección de rutas y manejo de sesiones.",
+        description="Microservicio para autenticación y registro de usuarios con FastAPI y Firebase...",
         version="1.0.0",
+        root_path="/auth",
         contact={
             "name": "Equipo EzTo",
             "url": "https://eztoplatform.com/contact",
@@ -39,7 +46,7 @@ def create_app(testing: bool = False) -> FastAPI:
         ],
         lifespan=lifespan if not testing else None
     )
-
+    
     # CORS
     app.add_middleware(
         CORSMiddleware,
@@ -90,12 +97,17 @@ def create_app(testing: bool = False) -> FastAPI:
     @app.get("/health", tags=["Monitoreo"])
     def health_check():
         return {"status": "ok"}
+    
+    @app.get("/config-health")
+    def config_health():
+        # Devuelve el profile y todo el cfg para inspección
+        return {"status": "up", "config_profile": PROFILE, "config": cfg}
 
     # Routers
-    app.include_router(register_router, prefix="/auth", tags=["Registro de Usuarios"])
-    app.include_router(auth_router, prefix="/auth", tags=["Autenticación"])
-    app.include_router(protected_router, prefix="/protected", tags=["Rutas Protegidas"])
-    app.include_router(auth_router, prefix="/auth", tags=["Logout"])
+    app.include_router(register_router, tags=["Registro de Usuarios"])
+    app.include_router(auth_router, tags=["Autenticación"])
+    app.include_router(protected_router, tags=["Rutas Protegidas"])
+    app.include_router(auth_router, tags=["Logout"])
 
     return app
 
