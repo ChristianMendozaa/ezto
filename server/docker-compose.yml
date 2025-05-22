@@ -152,6 +152,39 @@ services:
     networks:
       - ezto
 
+  nfc-service:
+    build:
+      context: ./nfc-service
+      dockerfile: Dockerfile
+    volumes:
+      - ./nfc-service:/app
+      - ./nfc-service/firebase_credentials.json:/app/firebase_credentials.json:ro
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8003 --reload
+    environment:
+      - ENV=development
+      - SERVICE_ID=nfc-service-1
+      - CONSUL_HOST=consul
+      - CONSUL_PORT=8500
+      - JAEGER_AGENT_HOST=jaeger
+      - JAEGER_AGENT_PORT=6831
+
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.nfc.rule=PathPrefix(`/nfc`)"
+      - "traefik.http.routers.nfc.entrypoints=web"
+      - "traefik.http.routers.nfc.middlewares=nfc-stripprefix,nfc-headers"
+      - "traefik.http.middlewares.nfc-stripprefix.stripprefix.prefixes=/nfc"
+      - "traefik.http.middlewares.nfc-headers.headers.customrequestheaders.X-From-Traefik=EzTo"
+      - "traefik.http.services.nfc.loadbalancer.server.port=8003"
+      - "traefik.http.services.nfc.loadbalancer.healthcheck.path=/health"
+      - "traefik.http.services.nfc.loadbalancer.healthcheck.interval=5s"
+      - "traefik.http.services.nfc.loadbalancer.healthcheck.timeout=3s"
+
+    networks:
+      - ezto
+    depends_on:
+      - consul
+
 volumes:
   pgdata:
 
