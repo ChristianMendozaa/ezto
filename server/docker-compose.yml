@@ -367,7 +367,35 @@ services:
       - consul
       - keycloak
       - config-server
-
+  members-service:
+    build:
+      context: ./members-service
+      dockerfile: Dockerfile
+    volumes:
+    - ./members-service:/app
+    ports:
+      - "${PORT_MEMBERS}:8011"
+    command: uvicorn app.main:app --host 0.0.0.0 --port ${PORT_MEMBERS} --reload
+    env_file: ./members-service/.env
+    environment:
+      - ENV=development
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.members.rule=PathPrefix(`/members`)"
+      - "traefik.http.routers.members.entrypoints=web"
+      - "traefik.http.routers.members.middlewares=members-headers"
+      - "traefik.http.middlewares.members-strip-prefix.stripprefix.prefixes=/members"
+      - "traefik.http.middlewares.members-headers.headers.customrequestheaders.X-From-Traefik=EzTo"
+      - "traefik.http.services.members.loadbalancer.healthcheck.path=/health"
+      - "traefik.http.services.members.loadbalancer.healthcheck.interval=5s"
+      - "traefik.http.services.members.loadbalancer.healthcheck.timeout=3s"
+      - "traefik.http.services.members.loadbalancer.server.port=${PORT_MEMBERS}"
+    networks:
+      - ezto
+    depends_on:
+      - consul
+      - keycloak
+      - config-server
 
 volumes:
   pgdata:
