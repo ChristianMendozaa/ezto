@@ -1,6 +1,18 @@
+"""
+Controlador para endpoints de gestión de miembros.
+
+Incluye:
+- Registrar un nuevo miembro.
+- Listar todos los miembros.
+- Obtener un miembro por ID.
+- Actualizar un miembro.
+- Eliminar un miembro.
+"""
+
 from fastapi import APIRouter, Depends, HTTPException
 from typing import List
 from pydantic import BaseModel, Field
+
 from app.services.member_service import MemberService
 from app.services.auth_service import AuthService
 from app.models.member_model import Member
@@ -11,6 +23,20 @@ class ErrorResponse(BaseModel):
     """Modelo de error estándar."""
     detail: str = Field(..., description="Mensaje de error.")
 
+@router.post(
+    "/",
+    summary="Registrar un nuevo miembro",
+    description="Crea un nuevo miembro en la plataforma. Requiere autenticación.",
+    response_model=Member,
+    responses={401: {"model": ErrorResponse}, 400: {"model": ErrorResponse}}
+)
+async def create_member(
+    member_data: Member,
+    user: dict = Depends(AuthService.get_current_user)  # Validación de usuario
+):
+    """Crea un nuevo miembro y lo registra en la base de datos."""
+    member_dict = member_data.model_dump()  # Use model_dump instead of dict
+    return await MemberService.create_member(member_dict)
 
 @router.get(
     "/",
@@ -22,6 +48,7 @@ class ErrorResponse(BaseModel):
 async def list_members(user: dict = Depends(AuthService.get_current_user)):
     """Devuelve la lista de miembros."""
     return await MemberService.list_members()
+
 
 @router.get(
     "/{member_id}",
@@ -40,20 +67,6 @@ async def get_member(
         raise HTTPException(status_code=404, detail="Miembro no encontrado.")
     return member
 
-@router.post(
-    "/",
-    summary="Registrar un nuevo miembro",
-    description="Crea un nuevo miembro en la plataforma. Requiere autenticación.",
-    response_model=Member,
-    responses={401: {"model": ErrorResponse}, 400: {"model": ErrorResponse}}
-)
-async def create_member(
-    member_data: Member,
-    user: dict = Depends(AuthService.get_current_user)  # Validación de usuario
-):
-    """Crea un nuevo miembro y lo registra en la base de datos."""
-    member_dict = member_data.dict()  
-    return await MemberService.create_member(member_dict)
 
 @router.put(
     "/{member_id}",
@@ -72,6 +85,7 @@ async def update_member(
     if not updated_member:
         raise HTTPException(status_code=404, detail="Miembro no encontrado.")
     return updated_member
+
 
 @router.delete(
     "/{member_id}",

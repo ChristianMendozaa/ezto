@@ -12,7 +12,7 @@ class Member(BaseModel):
     """
     Modelo para la creación y gestión de miembros.
     """
-    id: str = Field(..., title="id del Miembro", description="id del miembro.")
+    
     name: str = Field(..., title="Nombre del Miembro", description="Nombre del miembro.")
     email: str = Field(..., title="Correo Electrónico", description="Correo electrónico del miembro.")
     nfc_id: Optional[str] = Field(None, title="ID de NFC", description="ID de la tarjeta NFC del miembro.")
