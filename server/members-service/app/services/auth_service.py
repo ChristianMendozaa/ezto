@@ -1,80 +1,70 @@
+# app/services/auth_service.py
 import logging
-from firebase_admin import auth
+import requests
 from fastapi import HTTPException, Request
-from app.utils.firebase_config import db
+from jose import jwt, JWTError
 
-logging.basicConfig(level=logging.INFO)
+from app.config_loader import fetch_config, decrypt_value
+
+logger = logging.getLogger("app.services.auth_service")
+
+# 1) Baja la sección "keycloak" de tu Config-Server
+cfg = fetch_config().get("keycloak", {})
+
+# 2) Extrae los valores no cifrados
+KEYCLOAK_URL = cfg["url"].rstrip("/")            # p.ej. "http://keycloak:8080"
+REALM        = cfg["realm"]                      # p.ej. "master"
+
+# 3) Construye JWKS y issuer desde la configuración
+JWKS_URL = f"{KEYCLOAK_URL}/realms/{REALM}/protocol/openid-connect/certs"
+ISSUER   = f"{KEYCLOAK_URL}/realms/{REALM}"
 
 class AuthService:
-    """
-    Servicio de autenticación local para el microservicio de Miembros.
-    Duplica la lógica de verificación de tokens de Firebase para ser autónomo.
-    
-    - Verifica el token JWT recibido en la cookie 'authToken'.
-    - Confirma que el usuario exista en Firestore y extrae su rol.
-    - Retorna un diccionario con user_id, email y role.
-    
-    Cualquier cambio en la lógica de 'auth' de tu otro microservicio NO afecta a este.
-    Ambos pueden evolucionar de forma independiente.
-    """
 
     @staticmethod
     async def get_current_user(request: Request) -> dict:
-        """
-        Obtiene el token desde la cookie 'authToken' y llama a 'verify_token'.
-        Lanza HTTPException(401) si no se encuentra o es inválido.
-        
-        Returns:
-            dict: { "user_id": str, "email": str, "role": str }
-        """
-        token = request.cookies.get("authToken")
-        if not token:
-            # Opcionalmente, podrías intentar buscar en request.headers["Cookie"] si quieres
-            raise HTTPException(status_code=401, detail="Token ausente o inválido")
+        auth_header = request.headers.get("Authorization", "")
+        logger.debug("Received Authorization header: %r", auth_header)
+        if not auth_header.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Token missing")
 
-        return await AuthService.verify_token(token)
+        token = auth_header.split(" ", 1)[1]
+        logger.info("Verifying token…")
 
-    @staticmethod
-    async def verify_token(token: str) -> dict:
-        """
-        Verifica el token JWT con Firebase Admin. Si es válido, confirma la existencia
-        del usuario en Firestore y retorna un objeto con user_id, email y role.
-        
-        Args:
-            token (str): Token JWT recibido (normalmente en la cookie 'authToken').
-
-        Raises:
-            HTTPException(401): Si el token es inválido o la verificación falla.
-            HTTPException(404): Si el usuario no está en Firestore.
-
-        Returns:
-            dict: Información del usuario, p.ej. {"user_id": "...", "email": "...", "role": "..."}
-        """
+        # 1) Descargar JWKS
         try:
-            decoded_token = auth.verify_id_token(token)
-            logging.info(f"Decoded token: {decoded_token}")
-        except ValueError as e:
-            logging.error(f"Error de validación del token: {str(e)}")
-            raise HTTPException(status_code=401, detail="Token inválido o expirado")
-        except Exception as e:
-            logging.error(f"Error inesperado en verify_id_token: {str(e)}")
-            raise HTTPException(status_code=401, detail="Error en autenticación")
+            jwks = requests.get(JWKS_URL, timeout=5).json()
+        except Exception:
+            logger.exception("No pude descargar JWKS")
+            raise HTTPException(status_code=500, detail="Authentication backend error")
 
-        # Extraer el user_id del token decodificado
-        user_id = decoded_token.get("uid")
-        if not user_id:
-            raise HTTPException(status_code=401, detail="Token sin UID de usuario")
+        # 2) Busca la clave pública correcta por 'kid'
+        unverified_header = jwt.get_unverified_header(token)
+        kid = unverified_header.get("kid")
+        key_dict = next((k for k in jwks["keys"] if k["kid"] == kid), None)
+        if not key_dict:
+            logger.error("No hallé la clave JWKS para kid=%s", kid)
+            raise HTTPException(status_code=401, detail="Invalid token")
 
-        # Consultar Firestore para asegurar que existe y obtener su rol
-        user_doc = db.collection("users").document(user_id).get()
-        if not user_doc.exists:
-            raise HTTPException(status_code=404, detail="Usuario no encontrado en la base de datos")
+        # 3) Verifica firma, issuer y expiración
+        try:
+            decoded = jwt.decode(
+                token,
+                key=key_dict,
+                algorithms=["RS256"],
+                issuer=ISSUER,
+                options={"verify_aud": False}
+            )
+            logger.info("Token verificado OK: sub=%s", decoded.get("sub"))
+        except JWTError as e:
+            logger.error("Error al verificar JWT: %s", e)
+            raise HTTPException(status_code=401, detail="Token invalid or expired")
 
-        user_data = user_doc.to_dict()
-        user_type = user_data.get("user_type", "gym_member")
+        # 4) Extrae usuario y roles
+        sub   = decoded.get("sub")
+        email = decoded.get("email", "")
+        roles = decoded.get("realm_access", {}).get("roles", [])
+        # adapta esta lógica a tus roles reales
+        role  = "gym_owner" if "gym_owner" in roles else "gym_member"
 
-        return {
-            "user_id": user_id,
-            "email": decoded_token.get("email", ""),
-            "role": user_type
-        }
+        return {"user_id": sub, "email": email, "role": role}
