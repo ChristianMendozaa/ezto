@@ -1,6 +1,8 @@
+from fastapi import HTTPException
 from app.utils.firebase_config import db
 from app.utils.keycloak_config import keycloak_admin
 from app.models.user_model import UserRegister
+from keycloak.exceptions import KeycloakPostError
 import asyncio
 from datetime import date
 from fastapi import HTTPException
@@ -10,37 +12,33 @@ class UserRepository:
     @staticmethod
     async def create_user(user: UserRegister, logo_base64: str = None):
         try:
-            # 1. Crear usuario en Keycloak
+            # Paso 1: Verificar si ya existe el usuario en Keycloak
+            existing_users = keycloak_admin.get_users(query={"email": user.email})
+            if existing_users:
+                raise HTTPException(status_code=409, detail="Ya existe un usuario registrado con este correo.")
+
+            # Paso 2: Crear usuario en Keycloak
             try:
                 user_id = keycloak_admin.create_user({
                     "email": user.email,
                     "username": user.email,
                     "enabled": True,
-                    "firstName": user.full_name.split(" ")[0],
-                    "lastName": " ".join(user.full_name.split(" ")[1:]),
+                    "firstName": user.full_name.strip().split(" ")[0],
+                    "lastName": " ".join(user.full_name.strip().split(" ")[1:]),
                     "credentials": [{"value": user.password, "type": "password"}],
                 })
-            except Exception as e:
-                error_msg = str(e)
-                if "User exists with same username" in error_msg:
-                    raise HTTPException(
-                        status_code=400,
-                        detail="Ya existe un usuario registrado con este correo electrónico."
-                    )
+
+                # Paso 2.1: Asignar rol al usuario
+                role_name = user.user_type  # "gym_owner" o "gym_member"
+                role = keycloak_admin.get_realm_role(role_name)
+                keycloak_admin.assign_realm_roles(user_id=user_id, roles=[role])
+
+            except KeycloakPostError as e:
+                if e.response_code == 409:
+                    raise HTTPException(status_code=409, detail="El usuario ya existe en Keycloak.")
                 else:
-                    raise Exception(f"Error creando usuario en Keycloak: {error_msg}")
-
-            # Asignar el rol según user_type
-            role_name = user.user_type  # 'gym_owner' o 'gym_member'
-            roles = keycloak_admin.get_realm_roles()
-            role = next((r for r in roles if r['name'] == role_name), None)
-
-            if role is None:
-                raise HTTPException(status_code=400, detail=f"El rol '{role_name}' no existe en Keycloak.")
-
-            keycloak_admin.assign_realm_roles(user_id=user_id, roles=[{"id": role['id'], "name": role['name']}])
-
-            # 2. Guardar en Firestore
+                    raise HTTPException(status_code=502, detail=f"Error en Keycloak: {e}")
+            # Paso 3: Guardar en Firestore
             user_data = user.dict()
             user_data["uid"] = user_id
             user_data["gym_logo_base64"] = logo_base64
@@ -56,7 +54,7 @@ class UserRepository:
                 lambda: db.collection("users").document(user_id).set(user_data)
             )
 
-            # 3. Guardar gimnasio si es dueño
+            # Paso 4: Guardar datos del gimnasio si aplica
             if user.user_type == "gym_owner" and user.gym_info:
                 gym_data = {
                     "owner_id": user_id,
@@ -77,7 +75,7 @@ class UserRepository:
 
             return {"message": "Usuario registrado exitosamente", "uid": user_id}
 
-        except HTTPException as http_ex:
-            raise http_ex
+        except HTTPException as http_exc:
+            raise http_exc  # Propaga errores personalizados correctamente
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Error registrando el usuario: {str(e)}")

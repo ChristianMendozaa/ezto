@@ -24,7 +24,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 CONSUL_ADDR   = os.getenv("CONSUL_ADDR", "http://consul:8500")
-PORT          = int(os.getenv("PORT", 8006))
+PORT          = int(os.getenv("PORT", 8001))
 SERVICE_NAME  = "inventory-service"
 service_id: str | None = None
 

@@ -5,17 +5,24 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from app.middleware.auth_middleware import AuthMiddleware
+
 from app.middleware.rate_limit_middleware import RateLimitMiddleware
 from app.controllers.promotion_controller import router as promotion_router  # Importar el router de promociones
 from fastapi.exceptions import RequestValidationError
 from app.utils.exception_handlers import global_exception_dispatcher, request_validation_exception_handler
 from app.utils.consul_register import register_service_in_consul
 
+#configuracion centralizada
+from .config_loader import fetch_config, PROFILE
+
+cfg = fetch_config()
+# ahora vuelca cfg en variables de entorno o en tu pydantic BaseSettings
+HOST = cfg.get("host", "0.0.0.0")
+PORT = int(cfg.get("port", 8005))
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    register_service_in_consul("promotions-service", 8001)
+    register_service_in_consul("promotions-service", PORT)
     yield
 
 app = FastAPI(
@@ -24,6 +31,7 @@ app = FastAPI(
                 ":)",
     version="1.0.0",
     lifespan=lifespan,
+    root_path="/promotions",
     contact={
         "name": "Equipo EzTo",
         "url": "https://eztoplatform.com/contact",
@@ -53,8 +61,6 @@ app.add_middleware(RateLimitMiddleware)
 # Middleware de GZIP para comprimir respuestas (mínimo 1KB)
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
-# Middleware de autenticación
-app.add_middleware(AuthMiddleware)
 
 @app.middleware("http")
 async def security_headers(request: Request, call_next):
@@ -96,3 +102,12 @@ app.include_router(promotion_router, prefix="/promotions", tags=["Promociones"])
 @app.get("/health", tags=["Monitoreo"])
 def health_check():
     return {"status": "ok"}
+
+@app.get("/config-health")
+def config_health():
+    # Devuelve el profile y todo el cfg para inspección
+    return {"status": "up", "config_profile": PROFILE, "config": cfg}
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("app.main:app", host=HOST, port=PORT, reload=True)

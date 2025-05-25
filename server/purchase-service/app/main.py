@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 # --- Configuración ---
 CONSUL_ADDR  = os.getenv("CONSUL_ADDR", "http://consul:8500")
-PORT         = int(os.getenv("PORT", 8004))
+PORT         = int(os.getenv("PORT", 8002))
 SERVICE_NAME = "purchase-service"
 service_id: str | None = None
 

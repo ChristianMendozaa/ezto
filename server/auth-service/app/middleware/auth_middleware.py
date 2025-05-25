@@ -6,8 +6,14 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# Las rutas públicas SIN importar el root_path
-EXCLUDED_PATHS = ["/logout", "/register", "/login", "/health", "/docs", "/openapi.json"]
+EXCLUDED_PATHS = [
+    "/auth/register", "/register",
+    "/auth/login",    "/login",
+    "/auth/logout",   "/logout",
+    "/health",        "/auth/health",
+]
+
+
 
 class AuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):

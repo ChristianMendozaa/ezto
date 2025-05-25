@@ -15,7 +15,8 @@ async def dashboard(user: dict = Depends(AuthService.require_role("gym_owner")))
     """
     Endpoint para acceder al panel de administración de gimnasios.
     """
-    return success_response({"message": "Bienvenido al Dashboard", "user": user})
+    return DashboardResponse(message="Bienvenido al Dashboard", user=user)
+
 
 @router.get(
     "/client",
@@ -27,4 +28,5 @@ async def client(user: dict = Depends(AuthService.require_role("gym_member"))):
     """
     Endpoint para acceder al panel de clientes del gimnasio.
     """
-    return success_response({"message": "Bienvenido al Panel de Cliente", "user": user})
+    return ClientResponse(message="Bienvenido al Panel de Cliente", user=user)
+

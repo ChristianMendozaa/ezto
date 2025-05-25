@@ -25,9 +25,17 @@ logger = logging.getLogger(__name__)
 
 # --- Configuración ---
 CONSUL_ADDR  = os.getenv("CONSUL_ADDR", "http://consul:8500")
-PORT         = int(os.getenv("PORT", 8003))
 SERVICE_NAME = "supplier-service"
 service_id: str | None = None
+
+
+from .config_loader import fetch_config, PROFILE
+
+cfg = fetch_config()
+# ahora vuelca cfg en variables de entorno o en tu pydantic BaseSettings
+HOST = cfg.get("host", "0.0.0.0")
+PORT = int(cfg.get("port", 8006))
+
 
 # --- App FastAPI ---
 app = FastAPI(
@@ -82,6 +90,11 @@ async def on_startup():
 async def on_shutdown():
     if service_id:
         deregister_service(CONSUL_ADDR, service_id)
+
+@app.get("/config-health")
+def config_health():
+    # Devuelve el profile y todo el cfg para inspección
+    return {"status": "up", "config_profile": PROFILE, "config": cfg}
 
 if __name__ == "__main__":
     import uvicorn

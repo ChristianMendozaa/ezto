@@ -21,6 +21,14 @@ const nextConfig = {
     parallelServerBuildTraces: true,
     parallelServerCompiles: true,
   },
+  async rewrites() {
+    return [
+      {
+        source: '/keycloak/:path*',
+        destination: 'http://localhost/keycloak/:path*',
+      },
+    ]
+  },
 }
 
 mergeConfig(nextConfig, userConfig)

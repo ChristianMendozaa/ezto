@@ -1,12 +1,54 @@
+# app/utils/firebase_config.py
+
 import firebase_admin
-from firebase_admin import credentials, firestore, auth
+from firebase_admin import credentials, firestore
+from app.config_loader import fetch_config, decrypt_value
 
-# Cargar las credenciales de Firebase
-cred = credentials.Certificate("firebase_credentials.json")
+# 1) Baja la sección “firebase”
+cfg = fetch_config().get("firebase", {})
 
-# Inicializar la aplicación de Firebase si no está ya inicializada
+# Función de debug para imprimir los valores recibidos
+def _maybe_decrypt(val: str) -> str:
+    """
+    Si val arranca con "{cipher}", quita ese prefijo y
+    llama a /decrypt. Si no, lo devuelve tal cual.
+    """
+    if isinstance(val, str) and val.startswith("{cipher}"):
+        cipher_text = val[len("{cipher}"):]
+        result = decrypt_value(cipher_text)
+        print(f"[firebase_config] Decrypted: {result}")  # Debug
+        return result
+    print(f"[firebase_config] Raw: {val}")  # Debug
+    return val
+
+def _normalize_newlines(s: str) -> str:
+    # Convierte las barras invertidas dobles en saltos reales:
+    return s.replace("\\n", "\n")
+# 2) Reconstruye el dict de credenciales,
+#    desencriptando únicamente los campos cifrados
+service_account_info = {
+    "type":                        _maybe_decrypt(cfg.get("type", "")),
+    "project_id":                  _maybe_decrypt(cfg.get("project_id", "")),
+    "private_key_id":              _maybe_decrypt(cfg.get("private_key_id", "")),
+    "private_key":                  _normalize_newlines(_maybe_decrypt(cfg.get("private_key",""))),
+    "client_email":                _maybe_decrypt(cfg.get("client_email", "")),
+    "client_id":                   _maybe_decrypt(cfg.get("client_id", "")),
+    "auth_uri":                    _maybe_decrypt(cfg.get("auth_uri", "")),
+    "token_uri":                   _maybe_decrypt(cfg.get("token_uri", "")),
+    "auth_provider_x509_cert_url": _maybe_decrypt(cfg.get("auth_provider_x509_cert_url", "")),
+    "client_x509_cert_url":        _maybe_decrypt(cfg.get("client_x509_cert_url", "")),
+    "universe_domain":             _maybe_decrypt(cfg.get("universe_domain", "")),
+}
+
+# Debug: imprimir todo el dict reconstruido
+print("[firebase_config] service_account_info:")
+for k, v in service_account_info.items():
+    print(f"  {k}: {repr(v)}")
+
+# 3) Inicializa Firebase solo una vez
 if not firebase_admin._apps:
+    cred = credentials.Certificate(service_account_info)
     firebase_admin.initialize_app(cred)
 
-# Crear una instancia de Firestore
+# 4) Exporta el cliente de Firestore
 db = firestore.client()

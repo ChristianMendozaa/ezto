@@ -1,5 +1,17 @@
-http:
+http:  
   services:
+    config-server:
+      loadBalancer:
+        servers:
+          - url: "http://config-server:${CONFIG_SERVER_PORT}"
+        healthCheck:
+          path: "/health"
+          interval: "5s"
+          timeout: "3s"
+        passHostHeader: true
+        circuitBreaker:
+          expression: "NetworkErrorRatio() > 0.5"
+
     auth-service:
       loadBalancer:
         servers:
@@ -72,10 +84,34 @@ http:
         circuitBreaker:
           expression: "NetworkErrorRatio() > 0.5"
 
-    usermembership-service:
+    usermemberships-service:
       loadBalancer:
         servers:
-          - url: "http://usermembership-service:${PORT_MEMBERSHIP}"
+          - url: "http://usermembership-service:${PORT_USERMEMBERSHIP}"
+        healthCheck:
+          path: "/health"
+          interval: "5s"
+          timeout: "3s"
+        passHostHeader: true
+        circuitBreaker:
+          expression: "NetworkErrorRatio() > 0.5"
+    
+    class-service:
+      loadBalancer:
+        servers:
+          - url: "http://class-service:${PORT_CLASSES}"
+        healthCheck:
+          path: "/health"
+          interval: "5s"
+          timeout: "3s"
+        passHostHeader: true
+        circuitBreaker:
+          expression: "NetworkErrorRatio() > 0.5"
+    
+    reservations-service:
+      loadBalancer:
+        servers:
+          - url: "http://reservations-service:${PORT_RESERVATIONS}"
         healthCheck:
           path: "/health"
           interval: "5s"
@@ -109,6 +145,13 @@ http:
           expression: "NetworkErrorRatio() > 0.5"
 
   routers:
+   
+    config-api:
+      rule: "PathPrefix(`/config`)"
+      service: config-server
+      entryPoints:
+        - web
+
     auth:
       rule: "PathPrefix(`/auth`)"
       service: auth-service
@@ -163,7 +206,24 @@ http:
       entryPoints:
         - web
       middlewares:
-        - retry-membership
+        - retry-usermembership
+
+    reservations:
+      rule: "PathPrefix(`/reservations`)"
+      service: reservations-service
+      entryPoints:
+        - web
+      middlewares:
+        - retry-reservations
+        
+    
+    classes:
+      rule: "PathPrefix(`/classes`)"
+      service: class-service
+      entryPoints:
+        - web
+      middlewares:
+        - retry-class
 
     keycloak:
       rule: "PathPrefix(`/keycloak`)"
@@ -192,7 +252,22 @@ http:
         attempts: 3
         initialInterval: 500ms
 
-    retry-membership:
+    retry-usermemberships:
       retry:
         attempts: 3
         initialInterval: 500ms
+
+    retry-supplier:
+      retry:
+        attempts: 3
+        initialInterval: 500ms
+
+    retry-class:
+      retry:
+        attempts: 3
+        initialInterval: 500ms
+    
+    retry-reservations:
+      retry:
+        attempts: 3
+        initialInterval: 500ms  

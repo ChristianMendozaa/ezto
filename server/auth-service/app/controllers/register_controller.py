@@ -167,11 +167,10 @@ async def register_user(
         # Devolver la respuesta correcta con el UID real
         return RegisterResponse(message=result["message"], uid=result["uid"])
 
-    except HTTPException as http_ex:
-        # Si es una excepción controlada, respétala
-        return error_response(http_ex.detail, http_ex.status_code)
+    except HTTPException as e:
+        return error_response(e.detail, e.status_code)
     except Exception as e:
         # Si es cualquier otro error inesperado, ahí sí lanza 500
         print("Error durante el registro de usuario:")
         traceback.print_exc()
-        return error_response(str(e), 500)
+        return error_response("Error interno en el servidor", 500)

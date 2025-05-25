@@ -37,6 +37,7 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar"
+import { useAuth } from "@/lib/auth-context";
 
 const sidebarItems = [
   { href: "/client", icon: LayoutDashboard, label: "client.dashboardTitle" },
@@ -52,6 +53,7 @@ export function ClientSidebar() {
   const { t, language, setLanguage } = useLanguage()
   const { theme, toggleTheme } = useTheme()
   const { state } = useSidebar()
+  const { logout } = useAuth();
 
   return (
     <Sidebar collapsible="icon">
@@ -61,7 +63,7 @@ export function ClientSidebar() {
           <SidebarTrigger />
         </div>
       </SidebarHeader>
-      
+
       <SidebarContent>
         <SidebarMenu>
           {sidebarItems.map((item) => (
@@ -89,7 +91,7 @@ export function ClientSidebar() {
           ))}
         </SidebarMenu>
       </SidebarContent>
-      
+
       <SidebarFooter>
         <div className={cn("flex items-center gap-2 mb-2", state === "collapsed" ? "flex-col" : "justify-between")}>
           <Button variant="ghost" size="icon" onClick={toggleTheme} className="w-9 h-9 shrink-0 relative">
@@ -110,7 +112,7 @@ export function ClientSidebar() {
             </span>
           </Button>
         </div>
-        
+
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -124,7 +126,7 @@ export function ClientSidebar() {
               {state !== "collapsed" && <span className="ml-2">{String(t("client.name"))}</span>}
             </Button>
           </DropdownMenuTrigger>
-          
+
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel>{String(t("common.profile"))}</DropdownMenuLabel>
             <DropdownMenuSeparator />
@@ -133,11 +135,9 @@ export function ClientSidebar() {
                 {String(t("common.settings"))}
               </Link>
             </DropdownMenuItem>
-            <DropdownMenuItem>
-              <Link href="/logout" className="flex items-center w-full">
-                <LogOut className="mr-2 h-4 w-4" />
-                <span>{String(t("common.logout"))}</span>
-              </Link>
+            <DropdownMenuItem onClick={logout} className="cursor-pointer">
+              <LogOut className="mr-2 h-4 w-4" />
+              <span>{String(t("common.logout"))}</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
