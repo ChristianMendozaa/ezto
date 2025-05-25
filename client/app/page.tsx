@@ -9,10 +9,11 @@ import { LanguageToggle } from "@/components/language-toggle"
 import { useLanguage } from "@/lib/hooks/use-language"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useEffect } from "react"
+import { useKeycloak } from "@react-keycloak/web";
 
 export default function LandingPage() {
   const { t } = useLanguage()
-
+  const { keycloak } = useKeycloak();
   useEffect(() => {
     const handleNavClick = (e: MouseEvent) => {
       const target = e.target as HTMLAnchorElement
@@ -141,9 +142,9 @@ export default function LandingPage() {
           <div className="flex items-center gap-2">
             <LanguageToggle />
             <ThemeToggle />
-            <Link href="/login">
-              <Button variant="ghost">{t("common.signIn")}</Button>
-            </Link>
+            <Button variant="ghost" onClick={() => keycloak.login()}>
+              {t("common.signIn")}
+            </Button>
             <Link href="/register">
               <Button className="bg-orange-500 text-white hover:bg-orange-600">{t("common.signUp")}</Button>
             </Link>

@@ -1,8 +1,7 @@
-// client/app/lib/auth-context.tsx
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useKeycloak } from "@react-keycloak/web";
 
 interface User {
@@ -24,15 +23,26 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const pathname = usePathname();
 
-  // Cuando Keycloak ya esté listo:
   useEffect(() => {
-    if (!initialized) return;
-    if (!keycloak?.authenticated) {
-      keycloak.login();
+    if (!initialized || !keycloak) return;
+
+    if (!keycloak.authenticated) {
+      // 🔐 Solo forzamos login en rutas protegidas
+      const protectedRoutes = ["/dashboard", "/client"];
+      const isProtected = protectedRoutes.some((route) => pathname.startsWith(route));
+      if (isProtected) {
+        keycloak.login();
+        return;
+      }
+
+      // No está autenticado y no está en ruta protegida → continuar como visitante
+      setLoading(false);
       return;
     }
-    // extraemos datos del token
+
+    // ✅ Usuario autenticado → extraemos datos
     const parsed = keycloak.tokenParsed as any;
     setUser({
       user_id: parsed.sub,
@@ -41,24 +51,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         ? "gym_owner"
         : "gym_member",
     });
-    setLoading(false);
-  }, [initialized, keycloak]);
 
-  // redirige según rol
+    setLoading(false);
+  }, [initialized, keycloak, pathname]);
+
+  // redirige automáticamente tras login exitoso
   useEffect(() => {
     if (loading || !user) return;
-    if (user.role === "gym_owner") router.replace("/dashboard");
-    else router.replace("/client");
-  }, [loading, user, router]);
+
+    if (pathname === "/" || pathname === "/login") {
+      if (user.role === "gym_owner") router.replace("/dashboard");
+      else router.replace("/client");
+    }
+  }, [loading, user, pathname, router]);
 
   const logout = async () => {
-    // 1) llamas a tu endpoint backend para borrar la cookie
-    await fetch(process.env.NEXT_PUBLIC_BACKEND_URL + "/auth/logout", {
-      method: "POST",
-      credentials: "include",
+    keycloak.logout({
+      redirectUri: window.location.origin,
     });
-    // 2) luego logout Keycloak
-    keycloak.logout({ redirectUri: window.location.origin });
   };
 
   return (

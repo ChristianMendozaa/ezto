@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends
 from app.services.auth_service import AuthService
 from app.utils.response_helper import success_response
 from app.models.responses_models import DashboardResponse, ClientResponse
@@ -11,11 +11,12 @@ router = APIRouter()
     description="Acceso al panel de administración para dueños de gimnasios. Se requiere el rol 'gym_owner'.",
     response_model=DashboardResponse
 )
-async def dashboard(user: dict = Depends(lambda request: AuthService.require_role(request, "gym_owner"))):
+async def dashboard(user: dict = Depends(AuthService.require_role("gym_owner"))):
     """
     Endpoint para acceder al panel de administración de gimnasios.
     """
-    return success_response({"message": "Bienvenido al Dashboard", "user": user})
+    return DashboardResponse(message="Bienvenido al Dashboard", user=user)
+
 
 @router.get(
     "/client",
@@ -23,8 +24,9 @@ async def dashboard(user: dict = Depends(lambda request: AuthService.require_rol
     description="Acceso al panel de cliente para miembros del gimnasio. Se requiere el rol 'gym_member'.",
     response_model=ClientResponse
 )
-async def client(user: dict = Depends(lambda request: AuthService.require_role(request, "gym_member"))):
+async def client(user: dict = Depends(AuthService.require_role("gym_member"))):
     """
     Endpoint para acceder al panel de clientes del gimnasio.
     """
-    return success_response({"message": "Bienvenido al Panel de Cliente", "user": user})
+    return ClientResponse(message="Bienvenido al Panel de Cliente", user=user)
+
