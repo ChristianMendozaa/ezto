@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 async def list_members(user: dict = Depends(AuthService.get_current_user)):
     """Obtiene la lista de todos los miembros."""
     logger.debug("Recibida petición GET /members/")
-    response = await MemberService.list_members()
+    response = await MemberService.get_all_members()
     if response.status == "error":
         raise HTTPException(status_code=500, detail=response.dict())
     return response
@@ -35,22 +35,16 @@ async def create_member(member: MemberDTO, user: dict = Depends(AuthService.get_
     """Crea un nuevo miembro."""
     logger.debug(f"Recibida petición POST /members/create con datos: {member}")
     try:
-        response = await MemberService.create_member(member.dict())
-        if response.status == "error":
-            raise HTTPException(status_code=400, detail=response.dict())
-        return response
+        return await MemberService.create_member(member)
     except Exception as e:
-        logger.error(f"Error creando miembro: {e}")
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.patch("/update/{member_id}", response_model=SuccessResponse)
-async def update_member_partial(
-    member_id: str,
-    updates: Dict[str, Any] = Body(...),
-    user: dict = Depends(AuthService.get_current_user)
-):
-    """Actualiza parcialmente un miembro por su ID."""
+@router.patch("/update/{member_id}",tags=["Miembros"], response_model=SuccessResponse)
+async def update_member(member_id: str, updates: Dict[str, Any] = Body(...), user: dict = Depends(AuthService.get_current_user)):
+    """
+    Actualiza un miembro por su ID.
+    """
     logger.debug(f"Recibida petición PATCH /members/update/{member_id} con cambios: {updates}")
     response = await MemberService.update_member(member_id, updates)
     if response.status == "error":
@@ -58,11 +52,11 @@ async def update_member_partial(
     return response
 
 
-@router.delete("/delete/{member_id}", response_model=SuccessResponse)
+@router.delete("/delete/{member_id}", tags=["Miembros"], response_model=SuccessResponse)
 async def delete_member(member_id: str, user: dict = Depends(AuthService.get_current_user)):
     """Elimina un miembro por su ID."""
     logger.debug(f"Recibida petición DELETE /members/delete/{member_id}")
     response = await MemberService.delete_member(member_id)
     if response.status == "error":
-        raise HTTPException(status_code=404, detail=response.dict())
+        raise HTTPException(status_code=400, detail=response.dict())
     return response
