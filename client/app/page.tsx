@@ -1,12 +1,17 @@
 "use client"
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Dumbbell, Users, CreditCard, BarChart3, Calendar, Smartphone, Shield, Clock, Check } from "lucide-react"
+import { ThemeToggle } from "@/components/theme-toggle"
+import { LanguageToggle } from "@/components/language-toggle"
 import { useLanguage } from "@/lib/hooks/use-language"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useEffect } from "react"
 import { useKeycloak } from "@react-keycloak/web";
 
-export default function ClientDashboard() {
+export default function LandingPage() {
   const { t } = useLanguage()
   const { keycloak } = useKeycloak();
   useEffect(() => {
