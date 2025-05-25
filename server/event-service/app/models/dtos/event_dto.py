@@ -42,3 +42,19 @@ class EventDTO(BaseModel):
         if price is not None and price < 0:
             raise ValueError("El precio no puede ser negativo.")
         return price
+
+    def to_entity(self, entity_id: Optional[str] = None) -> "EventEntity":
+        from app.models.event_model import EventEntity
+        return EventEntity(
+            id=self.id if hasattr(self, "id") else entity_id,
+            name=self.name,
+            description=self.description,
+            organizer=self.organizer,
+            start_time=self.start_time,
+            end_time=self.end_time,
+            capacity=self.capacity,
+            location=self.location,
+            event_type=self.event_type,
+            price=self.price,
+            status=self.status
+        )
