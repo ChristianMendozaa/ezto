@@ -77,9 +77,13 @@ class MemberService:
             return ErrorResponse(message="Error inesperado al eliminar miembro", errors=[str(e)], status_code=500)
 
     @staticmethod
-    async def update_member(member_id: str, member: MemberDTO):
+    async def update_member(member_id: str, updates: dict):
         try:
-            entity = member.to_entity(member_id)
+            # Reconstruimos el DTO a partir del dict plano
+            member_dto = MemberDTO(id=member_id, **updates)
+
+            # Convertimos a entidad y pasamos al repositorio
+            entity = member_dto.to_entity()
             result = await MemberRepository.update_member(member_id, entity)
 
             if result["status"] == "error":
@@ -97,5 +101,19 @@ class MemberService:
 
         except Exception as e:
             logger.error(f"❌ Error inesperado en update_member: {str(e)}")
+            return ErrorResponse(message="Error inesperado al actualizar miembro", errors=[str(e)], status_code=500)
+
+    @staticmethod
+    async def update_member_partial(member_id: str, updates: dict):
+        try:
+            result = await MemberRepository.update_member_partial(member_id, updates)
+
+            if result["status"] == "error":
+                return ErrorResponse(message="Error al actualizar miembro", errors=[result["message"]], status_code=400)
+
+            return SuccessResponse(message="Miembro actualizado exitosamente", data=result["data"])
+
+        except Exception as e:
+            logger.error(f"❌ Error inesperado en update_miembro_partial: {str(e)}")
             return ErrorResponse(message="Error inesperado al actualizar miembro", errors=[str(e)], status_code=500)
 
