@@ -39,41 +39,50 @@ class MemberRepository:
             return {"status": "error", "message": str(e)}
 
     @staticmethod
-    async def create_member(data: dict):
+    async def create_member(entity: MemberEntity):
         try:
-            member_id = data.get("id")
-            if not member_id:
-                return {"status": "error", "message": "El ID del miembro es requerido"}
-
             loop = asyncio.get_running_loop()
-            ref = db.collection("members").document(member_id)
-            await loop.run_in_executor(None, lambda: ref.set(data))
+            ref = db.collection("members").document()
 
-            return {"status": "success", "data": {"id": member_id, **data}}
+            entity.id = ref.id
+            data = entity.to_dict()
+
+            await loop.run_in_executor(None, lambda: ref.set(data))
+            return {
+                "status": "success",
+                "data": data
+            }
 
         except Exception as e:
             logger.error(f"❌ Error creando miembro: {e}")
-            return {"status": "error", "message": str(e)}
+            return {
+                "status": "error",
+                "message": str(e)
+            }
 
     @staticmethod
-    async def update_member(member_id: str, updates: dict):
+    async def update_member(member_id: str, entity: MemberEntity):
         try:
             loop = asyncio.get_running_loop()
             ref = db.collection("members").document(member_id)
 
+            data = entity.to_dict()
             doc = await loop.run_in_executor(None, lambda: ref.get())
             if not doc.exists:
                 return {"status": "error", "message": "Miembro no encontrado"}
 
-            await loop.run_in_executor(None, lambda: ref.update(updates))
+            await loop.run_in_executor(None, lambda: ref.update(data))
 
-            updated_doc = await loop.run_in_executor(None, lambda: ref.get())
-            return {"status": "success", "data": {"id": member_id, **updated_doc.to_dict()}}
-
+            updated = await loop.run_in_executor(None, lambda: ref.get())
+            return {
+                "status": "success",
+                "data": updated.to_dict()
+            }
         except Exception as e:
             logger.error(f"❌ Error actualizando miembro: {e}")
             return {"status": "error", "message": str(e)}
-
+        
+    
     @staticmethod
     async def delete_member(member_id: str):
         try:
