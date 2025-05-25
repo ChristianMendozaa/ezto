@@ -1,6 +1,6 @@
 # app/models/dtos/membership_plan_dto.py
 
-from pydantic import BaseModel, ConfigDict, Field, constr, conint, confloat, validator
+from pydantic import BaseModel, ConfigDict, Field, constr, conint, confloat, field_validator
 from typing import Optional, List
 from datetime import date
 
@@ -32,8 +32,8 @@ class MembershipPlanDTO(BaseModel):
         description="Lista de servicios incluidos en el plan (al menos uno)"
     )
 
-    @validator("services_offered")
-    def no_services_empty(cls, v):
+    @field_validator("services_offered")
+    def check_services_not_empty(cls, v: List[str]) -> List[str]:
         if any(not s.strip() for s in v):
             raise ValueError("Cada servicio ofrecido debe ser una cadena no vacía.")
         return v

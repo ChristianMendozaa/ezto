@@ -20,7 +20,7 @@ from .config_loader import fetch_config, PROFILE
 
 cfg = fetch_config()
 HOST = cfg.get("host", "0.0.0.0")
-PORT = int(cfg.get("port", 8006))
+PORT = int(cfg.get("port", 8007))
 
 
 @asynccontextmanager
@@ -118,7 +118,3 @@ def health_check():
 def config_health():
     return {"status": "up", "config_profile": PROFILE, "config": cfg}
 
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("app.main:app", host=HOST, port=PORT, reload=True)
