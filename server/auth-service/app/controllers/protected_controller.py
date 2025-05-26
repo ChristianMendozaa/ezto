@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from app.services.auth_service import AuthService
 from app.utils.response_helper import success_response
-from app.models.responses_models import DashboardResponse, ClientResponse, StandardResponse
+from app.models.responses_models import DashboardResponse, ClientResponse
 
 router = APIRouter()
 
@@ -9,7 +9,7 @@ router = APIRouter()
     "/dashboard",
     summary="Panel de Administración",
     description="Acceso al panel de administración para dueños de gimnasios. Se requiere el rol 'gym_owner'.",
-    response_model=StandardResponse
+    response_model=DashboardResponse
 )
 async def dashboard(user: dict = Depends(AuthService.require_role("gym_owner"))):
     """
@@ -22,7 +22,7 @@ async def dashboard(user: dict = Depends(AuthService.require_role("gym_owner")))
     "/client",
     summary="Panel de Cliente",
     description="Acceso al panel de cliente para miembros del gimnasio. Se requiere el rol 'gym_member'.",
-    response_model=StandardResponse
+    response_model=ClientResponse
 )
 async def client(user: dict = Depends(AuthService.require_role("gym_member"))):
     """

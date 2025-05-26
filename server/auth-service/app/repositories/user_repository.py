@@ -5,7 +5,6 @@ from app.models.user_model import UserRegister
 from keycloak.exceptions import KeycloakPostError
 import asyncio
 from datetime import date
-from fastapi import HTTPException
 
 class UserRepository:
 

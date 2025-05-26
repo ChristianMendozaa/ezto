@@ -170,7 +170,6 @@ async def register_user(
     except HTTPException as e:
         return error_response(e.detail, e.status_code)
     except Exception as e:
-        # Si es cualquier otro error inesperado, ahí sí lanza 500
         print("Error durante el registro de usuario:")
         traceback.print_exc()
         return error_response("Error interno en el servidor", 500)

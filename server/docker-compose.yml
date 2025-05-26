@@ -43,8 +43,8 @@ services:
       - "--tracing.jaeger.samplingType=const"
       - "--tracing.jaeger.samplingParam=1.0"
     ports:
-      - "80:80"
-      - "8082:8080"  # Dashboard UI
+      - "80:80"       # HTTP entrypoint
+      - "8082:8080"   # Dashboard UI
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./traefik_dynamic.yml:/etc/traefik/dynamic/traefik_dynamic.yml

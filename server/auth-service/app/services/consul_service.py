@@ -1,24 +1,27 @@
 import requests
-from app.utils.env_config import require_env_var
+import socket
 
-# Cargar las variables de entorno correctas
-CONSUL_URL = require_env_var("CONSUL_ADDR")
-PORT_AUTH = int(require_env_var("PORT_AUTH"))  # Este es 8006 según tu .env
-ENV = require_env_var("ENV")
+CONSUL_URL = "http://consul:8500"
+
+def get_local_ip():
+    try:
+        return socket.gethostbyname(socket.gethostname())
+    except:
+        return "127.0.0.1"
 
 def register_service():
     service_id = "auth-service-1"
     service_data = {
         "ID": service_id,
         "Name": "auth-service",
-        "Address": "auth-service",  # Nombre del contenedor en Docker Compose
-        "Port": PORT_AUTH,
-        "Check": {
-            "HTTP": f"http://auth-service:{PORT_AUTH}/health",
+        "Address": get_local_ip(),
+        "Port": 8000,
+        "Check": { 
+            "HTTP": f"http://{get_local_ip()}:8000/health",
             "Interval": "10s",
             "Timeout": "1s"
         },
-        "Tags": ["auth", "fastapi", "v1", f"env:{ENV}"],
+        "Tags": ["auth", "fastapi", "v1", "env:dev"],
         "Meta": {
             "version": "1.0.0",
             "maintainer": "infra@eztoplatform.com"
@@ -27,19 +30,13 @@ def register_service():
 
     try:
         res = requests.put(f"{CONSUL_URL}/v1/agent/service/register", json=service_data)
-        if res.status_code == 200:
-            print("[CONSUL] Registro exitoso del auth-service.")
-        else:
-            print(f"[CONSUL] Error al registrar el auth-service: {res.status_code} - {res.text}")
+        print("[CONSUL] Registro exitoso." if res.status_code == 200 else f"[CONSUL] Error: {res.text}")
     except Exception as e:
-        print(f"[CONSUL] Error de conexión durante el registro: {e}")
+        print(f"[CONSUL] Error de conexión: {e}")
 
 def deregister_service():
     try:
         res = requests.put(f"{CONSUL_URL}/v1/agent/service/deregister/auth-service-1")
-        if res.status_code == 200:
-            print("[CONSUL] Desregistro exitoso del auth-service.")
-        else:
-            print(f"[CONSUL] Error al desregistrar el auth-service: {res.status_code} - {res.text}")
+        print("[CONSUL] Desregistro exitoso." if res.status_code == 200 else f"[CONSUL] Error: {res.text}")
     except Exception as e:
-        print(f"[CONSUL] Error de conexión durante el desregistro: {e}")
+        print(f"[CONSUL] Error al desregistrar: {e}")

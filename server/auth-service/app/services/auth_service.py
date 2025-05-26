@@ -56,50 +56,32 @@ class AuthService:
     @staticmethod
     async def verify_token(token: str):
         try:
-            # Usar introspect de Keycloak para validar el token
             token_info = keycloak_openid.introspect(token)
 
             if not token_info.get("active"):
                 raise HTTPException(status_code=401, detail="Token inválido o expirado")
 
         except Exception as e:
-            raise HTTPException(status_code=401, detail="Error al validar el token con Keycloak")
+            raise HTTPException(status_code=401, detail="Token inválido o expirado")
 
         user_id = token_info.get("sub")
         if not user_id:
             raise HTTPException(status_code=401, detail="Token inválido (sin sub)")
 
-        # Leer los roles desde el resultado de introspection
-        roles = token_info.get("realm_access", {}).get("roles", [])
+        try:
+            user_doc = db.collection("users").document(user_id).get()
+        except Exception as e:
+            raise HTTPException(status_code=500, detail="Error al acceder a la base de datos")
 
-        if "gym_owner" in roles:
-            user_type = "gym_owner"
-        elif "gym_member" in roles:
-            user_type = "gym_member"
-        else:
-            user_type = "unknown"
+        if not user_doc.exists:
+            raise HTTPException(status_code=404, detail="Usuario no encontrado en la base de datos")
 
+        user_data = user_doc.to_dict()
+        user_type = user_data.get("user_type", "gym_member")   
+                           
         return {
             "user_id": user_id,
             "email": token_info.get("email", ""),
             "role": user_type
         }
-
-    @staticmethod
-    def require_role(required_role: str):
-        async def role_dependency(request: Request):
-            user = getattr(request.state, "user", None)
-            if not user:
-                raise HTTPException(status_code=401, detail="Usuario no autenticado")
-
-            roles = user.get("role", [])
-            if isinstance(roles, list):
-                if required_role not in roles:
-                    raise HTTPException(status_code=403, detail="Acceso denegado: rol insuficiente")
-            else:
-                if roles != required_role:
-                    raise HTTPException(status_code=403, detail="Acceso denegado: rol insuficiente")
-
-            return user
-
-        return role_dependency
+                            
