@@ -12,6 +12,7 @@ import { useEffect } from "react"
 import { useKeycloak } from "@react-keycloak/web";
 
 export default function LandingPage() {
+export default function LandingPage() {
   const { t } = useLanguage()
   const { keycloak } = useKeycloak();
   useEffect(() => {

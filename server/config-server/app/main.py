@@ -71,7 +71,7 @@ async def decrypt(request: Request):
         raise HTTPException(400, "Bad cipher")
 
 # 4) Endpoint de configuración: /{app}/{profile}
-@app.get("/{app_name}/{profile}")
+@app.get("/{app_name}/{profile}", dependencies=[Depends(check_auth)])
 def get_config(app_name: str, profile: str, label: str = "main"):
     """
     Fallback:
