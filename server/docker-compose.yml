@@ -369,7 +369,7 @@ services:
       - consul
       - keycloak
       - config-server
-      
+
   memberships-service:
     build:
         context: ./memberships-service
@@ -399,7 +399,7 @@ services:
       - keycloak
       - config-server
       
-  members-service:
+members-service:
     build:
       context: ./members-service
       dockerfile: Dockerfile
@@ -428,7 +428,7 @@ services:
       - consul
       - keycloak
       - config-server
-
+      
 volumes:
   pgdata:
 
