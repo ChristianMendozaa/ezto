@@ -143,7 +143,19 @@ http:
         passHostHeader: true
         circuitBreaker:
           expression: "NetworkErrorRatio() > 0.5"
-
+          
+    members-service:
+      loadBalancer:
+        servers:
+          - url: "http://members-service:${PORT_MEMBERS}"
+        healthCheck:
+          path: "/health"
+          interval: "5s"
+          timeout: "3s"
+        passHostHeader: true
+        circuitBreaker:
+          expression: "NetworkErrorRatio() > 0.5" 
+          
     keycloak:
       loadBalancer:
         servers:
@@ -264,7 +276,15 @@ http:
         - web
       middlewares:
         - retry-event
-
+        
+    members:
+      rule: "PathPrefix(`/members`)"
+      service: members-service
+      entryPoints:
+        - web
+      middlewares:
+        - retry-members
+        
     keycloak:
       rule: "PathPrefix(`/keycloak`)"
       service: keycloak
@@ -321,3 +341,8 @@ http:
       retry:
         attempts: 3
         initialInterval: 500ms  
+
+    retry-members:
+      retry:
+        attempts: 3
+        initialInterval: 500ms
