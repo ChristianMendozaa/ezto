@@ -1,4 +1,185 @@
-http:
+http:  
+  services:
+    config-server:
+      loadBalancer:
+        servers:
+          - url: "http://config-server:${CONFIG_SERVER_PORT}"
+        healthCheck:
+          path: "/health"
+          interval: "5s"
+          timeout: "3s"
+        passHostHeader: true
+        circuitBreaker:
+          expression: "NetworkErrorRatio() > 0.5"
+
+    auth-service:
+      loadBalancer:
+        servers:
+          - url: "http://auth-service:8000"
+        healthCheck:
+          path: "/health"
+          interval: "5s"
+          timeout: "3s"
+        passHostHeader: true
+        circuitBreaker:
+          expression: "NetworkErrorRatio() > 0.5"
+
+    inventory-service:
+      loadBalancer:
+        servers:
+          - url: "http://inventory-service:${PORT_INVENTORY}"
+        healthCheck:
+          path: "/health"
+          interval: "5s"
+          timeout: "3s"
+        passHostHeader: true
+        circuitBreaker:
+          expression: "NetworkErrorRatio() > 0.5"
+
+    purchase-service:
+      loadBalancer:
+        servers:
+          - url: "http://purchase-service:${PORT_PURCHASE}"
+        healthCheck:
+          path: "/health"
+          interval: "5s"
+          timeout: "3s"
+        passHostHeader: true
+        circuitBreaker:
+          expression: "NetworkErrorRatio() > 0.5"
+
+    shop-service:
+      loadBalancer:
+        servers:
+          - url: "http://shop-service:${PORT_SHOP}"
+        healthCheck:
+          path: "/health"
+          interval: "5s"
+          timeout: "3s"
+        passHostHeader: true
+        circuitBreaker:
+          expression: "NetworkErrorRatio() > 0.5"
+
+    supplier-service:
+      loadBalancer:
+        servers:
+          - url: "http://supplier-service:${PORT_SUPPLIER}"
+        healthCheck:
+          path: "/health"
+          interval: "5s"
+          timeout: "3s"
+        passHostHeader: true
+        circuitBreaker:
+          expression: "NetworkErrorRatio() > 0.5"
+
+    promotions-service:
+      loadBalancer:
+        servers:
+          - url: "http://promotions-service:${PORT_PROMOTIONS}"
+        healthCheck:
+          path: "/health"
+          interval: "5s"
+          timeout: "3s"
+        passHostHeader: true
+        circuitBreaker:
+          expression: "NetworkErrorRatio() > 0.5"
+
+    usermemberships-service:
+      loadBalancer:
+        servers:
+          - url: "http://usermembership-service:${PORT_USERMEMBERSHIP}"
+        healthCheck:
+          path: "/health"
+          interval: "5s"
+          timeout: "3s"
+        passHostHeader: true
+        circuitBreaker:
+          expression: "NetworkErrorRatio() > 0.5"
+    
+    class-service:
+      loadBalancer:
+        servers:
+          - url: "http://class-service:${PORT_CLASSES}"
+        healthCheck:
+          path: "/health"
+          interval: "5s"
+          timeout: "3s"
+        passHostHeader: true
+        circuitBreaker:
+          expression: "NetworkErrorRatio() > 0.5"
+    
+    reservations-service:
+      loadBalancer:
+        servers:
+          - url: "http://reservations-service:${PORT_RESERVATIONS}"
+        healthCheck:
+          path: "/health"
+          interval: "5s"
+          timeout: "3s"
+        passHostHeader: true
+        circuitBreaker:
+          expression: "NetworkErrorRatio() > 0.5"
+    
+    memberships-service:
+      loadBalancer:
+        servers:
+          - url: "http://memberships-service:${PORT_MEMBERSHIPS}"
+        healthCheck:
+          path: "/health"
+          interval: "5s"
+          timeout: "3s"
+        passHostHeader: true
+        circuitBreaker:
+            expression: "NetworkErrorRatio() > 0.5"
+
+    event-service:
+      loadBalancer:
+        servers:
+          - url: "http://event-service:${PORT_EVENTS}"
+        healthCheck:
+          path: "/health"
+          interval: "5s"
+          timeout: "3s"
+        passHostHeader: true
+        circuitBreaker:
+          expression: "NetworkErrorRatio() > 0.5"
+    
+    personal-service:
+      loadBalancer:
+        servers:
+          - url: "http://event-service:${PORT_PERSONAL}"
+        healthCheck:
+          path: "/health"
+          interval: "5s"
+          timeout: "3s"
+        passHostHeader: true
+        circuitBreaker:
+          expression: "NetworkErrorRatio() > 0.5"
+
+    keycloak:
+      loadBalancer:
+        servers:
+          - url: "http://keycloak:8080"
+        healthCheck:
+          path: "/"
+          interval: "5s"
+          timeout: "3s"
+        passHostHeader: true
+        circuitBreaker:
+          expression: "NetworkErrorRatio() > 0.5"
+
+    consul:
+      loadBalancer:
+        servers:
+          - url: "http://consul:8500"
+        healthCheck:
+          path: "/v1/status/leader"
+          interval: "5s"
+          timeout: "3s"
+        passHostHeader: true
+        circuitBreaker:
+          expression: "NetworkErrorRatio() > 0.5"
+
   routers:
     config-api:
       rule: "PathPrefix(`/config`)"
@@ -100,6 +281,14 @@ http:
     events:
       rule: "PathPrefix(`/events`)"
       service: event-service
+      entryPoints:
+        - web
+      middlewares:
+        - retry-event
+    
+    personal:
+      rule: "PathPrefix(`/personal`)"
+      service: personal-service
       entryPoints:
         - web
       middlewares:

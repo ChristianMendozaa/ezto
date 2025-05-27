@@ -58,6 +58,7 @@ class AuthService:
         except JWTError as e:
             logger.error("Error al verificar JWT: %s", e)
             raise HTTPException(status_code=401, detail="Token inválido o expirado")
+            raise HTTPException(status_code=401, detail="Token inválido o expirado")
 
         sub   = decoded.get("sub")
         email = decoded.get("email", "")

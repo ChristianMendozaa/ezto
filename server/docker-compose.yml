@@ -317,6 +317,36 @@ services:
       - keycloak
       - config-server
 
+  personal-service:
+    build:
+      context: ./personal-service
+      dockerfile: Dockerfile
+    volumes:
+      - ./personal-service:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port ${PORT_PERSONAL} --
+    ports:
+      - "${PORT_PERSONAL}:8012"
+    env_file:
+      - ./personal-service/.env
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.personal.rule=PathPrefix(`/personal`)"
+      - "traefik.http.routers.personal.entrypoints=web"
+      - "traefik.http.routers.personal.middlewares=personal-headers"
+      - "traefik.http.middlewares.personal-headers.headers.customrequestheaders.X-From-Traefik=EzTo"
+      - "traefik.http.middlewares.personal-strip-prefix.stripprefix.prefixes=/personal"
+      - "traefik.http.services.personal.loadbalancer.healthcheck.path=/health"
+      - "traefik.http.services.personal.loadbalancer.healthcheck.interval=5s"
+      - "traefik.http.services.personal.loadbalancer.healthcheck.timeout=3s"
+      - "traefik.http.services.personal.loadbalancer.server.port=${PORT_PERSONAL}"
+    networks:
+      - ezto
+    depends_on:
+      - consul
+      - keycloak
+      - config-server
+
+
   class-service:
     build:
       context: ./class-service

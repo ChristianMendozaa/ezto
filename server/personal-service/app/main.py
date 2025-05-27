@@ -1,37 +1,39 @@
-# main.py (Microservicio de eventos)
-from fastapi import FastAPI, Request, Depends, HTTPException, status
+# personal-service/main.py
 
+from fastapi import FastAPI, Request, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
-from contextlib import asynccontextmanager
-from starlette.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
+from starlette.middleware.trustedhost import TrustedHostMiddleware
+from contextlib import asynccontextmanager
 
 from app.middleware.rate_limit_middleware import RateLimitMiddleware
-from app.controllers.event_controller import router as event_router  # Importar el router de eventos
+from app.controllers.personal_controller import router as personal_router
 from fastapi.exceptions import RequestValidationError
-from app.utils.exception_handlers import global_exception_dispatcher, request_validation_exception_handler
+
+from app.utils.exception_handlers import (
+    global_exception_dispatcher,
+    request_validation_exception_handler
+)
 from app.utils.consul_register import register_service_in_consul
 
-#configuracion centralizada
+# configuración centralizada
 from .config_loader import fetch_config, PROFILE
 
 cfg = fetch_config()
-# ahora vuelca cfg en variables de entorno o en tu pydantic BaseSettings
 HOST = cfg.get("host", "0.0.0.0")
-PORT = int(cfg.get("port", 8013))  # Puerto diferente para eventos
+PORT = int(cfg.get("port", 8012))  # cambia al puerto que corresponda
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    register_service_in_consul("event-service", PORT)
+    register_service_in_consul("personal-service", PORT)
     yield
 
 app = FastAPI(
-    title="Gestión de Eventos - Plataforma EzTo",
-    description="Microservicio para la gestión de eventos de un gimnasio dentro del sistema. "
-                ":)",
+    title="Gestión de Personal - Plataforma EzTo",
+    description="Microservicio para la gestión de entrenadores y personal de EzTo.",
     version="1.0.0",
     lifespan=lifespan,
-    root_path="/event",
+    root_path="/personal",
     contact={
         "name": "Equipo EzTo",
         "url": "https://eztoplatform.com/contact",
@@ -42,26 +44,26 @@ app = FastAPI(
         "url": "https://opensource.org/licenses/MIT",
     },
     openapi_tags=[
-        {"name": "Eventos", "description": "Endpoints relacionados con la gestión de eventos."},
+        {"name": "Personal", "description": "Endpoints relacionados con la gestión de entrenadores y personal."},
     ]
 )
 
-# Configuración de CORS para permitir el acceso desde el frontend autorizado
+# CORS: permitir origen del frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:4000"],  # Especificar el origen del frontend
+    allow_origins=["http://localhost:4000"],
     allow_credentials=True,
-    allow_methods=["*"],  # Permitir todos los métodos
-    allow_headers=["*"],  # Permitir todos los headers
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
-# Middleware de Rate Limiting
+# Rate limiting
 app.add_middleware(RateLimitMiddleware)
 
-# Middleware de GZIP para comprimir respuestas (mínimo 1KB)
+# GZIP: comprimir respuestas >1KB
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
-
+# Seguridad: cabeceras HTTP
 @app.middleware("http")
 async def security_headers(request: Request, call_next):
     response = await call_next(request)
@@ -71,7 +73,7 @@ async def security_headers(request: Request, call_next):
             "default-src 'self'; "
             "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; "
             "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; "
-            "img-src 'self' https://fastapi.tiangolo.com; "
+            "img-src 'self'; "
             "font-src 'self' https://cdnjs.cloudflare.com; "
             "connect-src 'self'; "
             "frame-ancestors 'self'; "
@@ -86,27 +88,29 @@ async def security_headers(request: Request, call_next):
     })
     return response
 
-
-# Middleware para restringir hosts permitidos
+# Trusted hosts
 app.add_middleware(
     TrustedHostMiddleware,
     allowed_hosts=["*"],
 )
-# Registro de manejadores de excepciones personalizados
+
+# Manejadores de excepciones
 app.add_exception_handler(RequestValidationError, request_validation_exception_handler)
 app.add_exception_handler(Exception, global_exception_dispatcher)
 
-# Incluir el router de eventos
-app.include_router(event_router, prefix="/events", tags=["Eventos"])
+# Incluir rutas de Personal
+app.include_router(personal_router, prefix="/personal", tags=["Personal"])
+
 
 @app.get("/health", tags=["Monitoreo"])
 def health_check():
     return {"status": "ok"}
 
-@app.get("/config-health")
+
+@app.get("/config-health", tags=["Monitoreo"])
 def config_health():
-    # Devuelve el profile y todo el cfg para inspección
     return {"status": "up", "config_profile": PROFILE, "config": cfg}
+
 
 if __name__ == "__main__":
     import uvicorn

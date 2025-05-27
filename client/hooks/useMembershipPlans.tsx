@@ -1,35 +1,32 @@
+"use client";
+
 import { useEffect, useState, useCallback } from "react";
 import { useKeycloak } from "@react-keycloak/web";
 
 // Ajusta si tu gateway corre en otro URL/puerto
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_GATEWAY_URL?.replace(/\/$/, "") ||
-  "http://localhost/promotions";
+  "http://localhost/memberships-plans";
 
-export interface Promotion {
+export interface MembershipPlan {
   id: string;
   name: string;
   description: string;
-  start_date: string;
-  end_date: string;
-  discount_type: "percentage" | "fixed" | "free_month";
-  discount_value: number;
-  promo_code?: string;
-  auto_apply: boolean;
-  applicable_to: "all_users" | "new_users" | "loyal_users" | "specific_plan";
-  status: boolean;
+  capacity: number;
+  duration_months: number;
+  price: number;
+  services_offered: string[];
 }
 
-// Omitimos solo el id, para poder enviar status también si tu DTO lo requiere
-export interface PromotionInput extends Omit<Promotion, "id"> {}
+// Para crear un plan, omitimos el id
+export interface MembershipPlanInput extends Omit<MembershipPlan, "id"> {}
 
-export function usePromotions() {
+export function useMembershipPlans() {
   const { keycloak, initialized } = useKeycloak();
-  const [promotions, setPromotions] = useState<Promotion[]>([]);
+  const [plans, setPlans] = useState<MembershipPlan[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Construye headers con Bearer token de Keycloak
   function authHeaders(): Record<string, string> {
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (keycloak?.token) {
@@ -38,26 +35,25 @@ export function usePromotions() {
     return headers;
   }
 
-  const fetchPromotions = useCallback(async () => {
+  const fetchPlans = useCallback(async () => {
     if (!keycloak?.authenticated) {
       setError("No estás autenticado");
       return;
     }
+
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE_URL}/promotions/`, {
+      const res = await fetch(`${API_BASE_URL}/memberships-plans/`, {
         method: "GET",
         headers: authHeaders(),
       });
-
       if (!res.ok) {
         const details = await res.json().catch(() => ({}));
-        throw new Error(details?.detail?.message || "Error obteniendo promociones.");
+        throw new Error(details?.detail?.message || "Error obteniendo planes.");
       }
-
       const payload = await res.json();
-      setPromotions(payload.data ?? payload);
+      setPlans(payload.data ?? payload);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -65,8 +61,8 @@ export function usePromotions() {
     }
   }, [keycloak]);
 
-  const createPromotion = useCallback(
-    async (data: PromotionInput) => {
+  const createPlan = useCallback(
+    async (data: MembershipPlanInput) => {
       if (!keycloak?.authenticated) {
         setError("No estás autenticado");
         return false;
@@ -75,20 +71,18 @@ export function usePromotions() {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch(`${API_BASE_URL}/promotions/create`, {
+        const res = await fetch(`${API_BASE_URL}/memberships-plans/create`, {
           method: "POST",
           headers: authHeaders(),
           body: JSON.stringify(data),
         });
-
         if (!res.ok) {
           const details = await res.json().catch(() => ({}));
-          throw new Error(details?.detail?.message || "No se pudo crear la promoción.");
+          throw new Error(details?.detail?.message || "No se pudo crear el plan.");
         }
-
         const payload = await res.json();
-        const newPromo: Promotion = payload.data ?? payload;
-        setPromotions((prev) => [...prev, newPromo]);
+        const newPlan: MembershipPlan = payload.data ?? payload;
+        setPlans((prev) => [...prev, newPlan]);
         return true;
       } catch (err: any) {
         setError(err.message);
@@ -100,7 +94,7 @@ export function usePromotions() {
     [keycloak]
   );
 
-  const deletePromotion = useCallback(
+  const deletePlan = useCallback(
     async (id: string) => {
       if (!keycloak?.authenticated) {
         setError("No estás autenticado");
@@ -110,17 +104,15 @@ export function usePromotions() {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch(`${API_BASE_URL}/promotions/delete/${id}`, {
+        const res = await fetch(`${API_BASE_URL}/memberships-plans/delete/${id}`, {
           method: "DELETE",
           headers: authHeaders(),
         });
-
         if (!res.ok) {
           const details = await res.json().catch(() => ({}));
-          throw new Error(details?.detail?.message || "No se pudo eliminar la promoción.");
+          throw new Error(details?.detail?.message || "No se pudo eliminar el plan.");
         }
-
-        setPromotions((prev) => prev.filter((p) => p.id !== id));
+        setPlans((prev) => prev.filter((p) => p.id !== id));
       } catch (err: any) {
         setError(err.message);
       } finally {
@@ -130,19 +122,20 @@ export function usePromotions() {
     [keycloak]
   );
 
-  // Solo lanza fetch una vez Keycloak esté listo
+  // Sólo lanza fetch una vez Keycloak esté listo
   useEffect(() => {
     if (initialized) {
-      fetchPromotions();
+      console.log("monté el componente, voy a fetchear");
+      fetchPlans();
     }
-  }, [initialized, fetchPromotions]);
+  }, [initialized, fetchPlans]);
 
   return {
-    promotions,
+    plans,
     loading,
     error,
-    createPromotion,
-    deletePromotion,
-    refetch: fetchPromotions,
+    createPlan,
+    deletePlan,
+    refetch: fetchPlans,
   };
 }
