@@ -1,50 +1,101 @@
+from firebase_admin import firestore
+from app.models.member_model import MemberEntity
+from datetime import datetime
 from app.utils.firebase_config import db
 import asyncio
+import logging
+
+logger = logging.getLogger(__name__)
+
 class MemberRepository:
+
     @staticmethod
     async def get_all_members():
-        """Obtiene todos los miembros de la base de datos."""
         try:
-            members_ref = db.collection("members")
-            members_snapshot = members_ref.stream()  # Firestore SDK ya es asincrónico
-            # Agregar el id del documento como campo en los datos
-            return [{"id": member.id, **member.to_dict()} for member in members_snapshot]
+            loop = asyncio.get_running_loop()
+            docs = await loop.run_in_executor(None, lambda: list(db.collection("members").stream()))
+            members = [{"id": doc.id, **doc.to_dict()} for doc in docs]
+
+            return {"status": "success", "data": members}
+
         except Exception as e:
-            raise Exception(f"Error al obtener los miembros: {str(e)}")
+            logger.error(f"❌ Error obteniendo miembros: {e}")
+            return {"status": "error", "message": str(e)}
 
     @staticmethod
-    async def create_member(member_data):
-        """Crea un nuevo miembro en la base de datos con un ID definido por el frontend."""
+    async def get_member_by_id(member_id: str):
         try:
-            members_ref = db.collection("members")
-            member_id = member_data.get("id")  # Obtiene el ID enviado desde el frontend
-            
-            if not member_id:
-                raise ValueError("El ID del miembro es requerido.")
+            loop = asyncio.get_running_loop()
+            ref = db.collection("members").document(member_id)
+            doc = await loop.run_in_executor(None, lambda: ref.get())
 
-            # Usamos `document(id).set(data)` en lugar de `add(data)`
-            await asyncio.to_thread(members_ref.document(member_id).set, member_data)
+            if not doc.exists:
+                return {"status": "error", "message": "Miembro no encontrado"}
 
-            return member_data  # Retornamos el mismo objeto enviado
+            return {"status": "success", "data": {"id": doc.id, **doc.to_dict()}}
+
         except Exception as e:
-            raise Exception(f"Error al crear el miembro: {str(e)}")
+            logger.error(f"❌ Error obteniendo miembro: {e}")
+            return {"status": "error", "message": str(e)}
 
     @staticmethod
-    async def update_member(member_id: str, member_data: dict) -> dict:
-        """Actualiza los datos de un miembro existente."""
+    async def create_member(entity: MemberEntity):
         try:
-            member_ref = db.collection("members").document(member_id)
-            await member_ref.update(member_data)  # Firestore SDK es asincrónico
-            return {"id": member_id, **member_data}
+            loop = asyncio.get_running_loop()
+            ref = db.collection("members").document()
+
+            entity.id = ref.id
+            data = entity.to_dict()
+
+            await loop.run_in_executor(None, lambda: ref.set(data))
+            return {
+                "status": "success",
+                "data": data
+            }
+
         except Exception as e:
-            raise Exception(f"Error al actualizar el miembro {member_id}: {str(e)}")
+            logger.error(f"❌ Error creando miembro: {e}")
+            return {
+                "status": "error",
+                "message": str(e)
+            }
 
     @staticmethod
-    async def delete_member(member_id: str) -> dict:
-        """Elimina un miembro por su ID."""
+    async def update_member(member_id: str, entity: MemberEntity):
         try:
-            member_ref = db.collection("members").document(member_id)
-            await asyncio.to_thread(member_ref.delete)
-            return {"message": f"Miembro {member_id} eliminado exitosamente."}
+            loop = asyncio.get_running_loop()
+            ref = db.collection("members").document(member_id)
+
+            data = entity.to_dict()
+            doc = await loop.run_in_executor(None, lambda: ref.get())
+            if not doc.exists:
+                return {"status": "error", "message": "Miembro no encontrado"}
+
+            await loop.run_in_executor(None, lambda: ref.update(data))
+
+            updated = await loop.run_in_executor(None, lambda: ref.get())
+            return {
+                "status": "success",
+                "data": updated.to_dict()
+            }
         except Exception as e:
-            raise Exception(f"Error al eliminar el miembro {member_id}: {str(e)}")
+            logger.error(f"❌ Error actualizando miembro: {e}")
+            return {"status": "error", "message": str(e)}
+        
+    
+    @staticmethod
+    async def delete_member(member_id: str):
+        try:
+            loop = asyncio.get_running_loop()
+            ref = db.collection("members").document(member_id)
+
+            doc = await loop.run_in_executor(None, lambda: ref.get())
+            if not doc.exists:
+                return {"status": "error", "message": "Miembro no encontrado"}
+
+            await loop.run_in_executor(None, lambda: ref.delete())
+            return {"status": "success", "message": f"Miembro {member_id} eliminado exitosamente"}
+
+        except Exception as e:
+            logger.error(f"❌ Error eliminando miembro: {e}")
+            return {"status": "error", "message": str(e)}

@@ -1,26 +1,53 @@
-from pydantic import BaseModel, Field
-from typing import Optional
-from enum import Enum
+from dataclasses import dataclass
 from datetime import datetime
+from enum import Enum
+from typing import Optional
 
 class MemberStatus(str, Enum):
     active = "activo"
     inactive = "inactivo"
     suspended = "suspendido"
 
-class Member(BaseModel):
-    """
-    Modelo para la creación y gestión de miembros.
-    """
-    id: str = Field(..., title="id del Miembro", description="id del miembro.")
-    name: str = Field(..., title="Nombre del Miembro", description="Nombre del miembro.")
-    email: str = Field(..., title="Correo Electrónico", description="Correo electrónico del miembro.")
-    nfc_id: Optional[str] = Field(None, title="ID de NFC", description="ID de la tarjeta NFC del miembro.")
-    status: MemberStatus = Field(..., title="Estado", description="Estado del miembro (activo, inactivo, suspendido).")
-    join_date: datetime = Field(..., title="Fecha de Ingreso", description="Fecha de registro del miembro.")
-    
-    class Config:
-        # Configura la conversión entre tipos de Pydantic y los tipos utilizados por Firebase
-        json_encoders = {
-            datetime: lambda v: v.isoformat()  # Convierte datetime a string ISO 8601 para Firebase
+@dataclass
+class MemberEntity:
+    id: str
+    name: str
+    email: str
+    nfc_id: Optional[str]
+    status: MemberStatus
+    join_date: datetime
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "name": self.name,
+            "email": self.email,
+            "nfc_id": self.nfc_id,
+            "status": self.status.value,
+            "join_date": self.join_date.isoformat()
         }
+
+    @staticmethod
+    def from_dict(data: dict) -> "MemberEntity":
+        try:
+            return MemberEntity(
+                id=data["id"],
+                name=data["name"],
+                email=data["email"],
+                nfc_id=data.get("nfc_id"),
+                status=MemberStatus(data["status"]),
+                join_date=datetime.fromisoformat(data["join_date"])
+            )
+        except Exception as e:
+            raise ValueError(f"Error al convertir documento a MemberEntity: {e}")
+
+    def to_dto(self) -> "MemberDTO":
+        from app.models.dtos.member_dto import MemberDTO
+        return MemberDTO(
+            id=self.id,
+            name=self.name,
+            email=self.email,
+            nfc_id=self.nfc_id,
+            status=self.status,
+            join_date=self.join_date
+        )

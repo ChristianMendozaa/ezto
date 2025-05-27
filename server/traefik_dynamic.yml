@@ -143,6 +143,18 @@ http:
         passHostHeader: true
         circuitBreaker:
           expression: "NetworkErrorRatio() > 0.5"
+    
+    personal-service:
+      loadBalancer:
+        servers:
+          - url: "http://event-service:${PORT_PERSONAL}"
+        healthCheck:
+          path: "/health"
+          interval: "5s"
+          timeout: "3s"
+        passHostHeader: true
+        circuitBreaker:
+          expression: "NetworkErrorRatio() > 0.5"
 
     keycloak:
       loadBalancer:
@@ -260,6 +272,14 @@ http:
     events:
       rule: "PathPrefix(`/events`)"
       service: event-service
+      entryPoints:
+        - web
+      middlewares:
+        - retry-event
+    
+    personal:
+      rule: "PathPrefix(`/personal`)"
+      service: personal-service
       entryPoints:
         - web
       middlewares:

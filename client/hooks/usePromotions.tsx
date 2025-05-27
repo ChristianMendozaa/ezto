@@ -43,7 +43,6 @@ export function usePromotions() {
       setError("No estás autenticado");
       return;
     }
-
     setLoading(true);
     setError(null);
     try {
