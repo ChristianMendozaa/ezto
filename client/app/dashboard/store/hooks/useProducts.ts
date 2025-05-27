@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useAuthHeaders } from "@/hooks/use-auth-header";
 
 export interface Product {
   id: string;
@@ -20,16 +21,25 @@ export interface Product {
   profit_margin: number;
 }
 
-const API_URL = "http://localhost:8001";
+const API_URL =  "http://localhost";
 
 export const useProducts = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
+  const rawAuthHeader = useAuthHeaders();
+
+  const authHeader: Record<string, string> = rawAuthHeader && typeof rawAuthHeader.Authorization === "string"
+    ? { Authorization: rawAuthHeader.Authorization }
+    : {};
 
   const fetchProducts = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/products/`, { credentials: "include" });
+      const res = await fetch(`${API_URL}/shop/products/`, {
+        headers: {
+          ...authHeader,
+        },
+      });
       if (res.ok) {
         const data = await res.json();
         setProducts(data);
@@ -51,9 +61,11 @@ export const useProducts = () => {
           formData.append(key, String(value));
         }
       });
-      const res = await fetch(`${API_URL}/products/${productId}`, {
+      const res = await fetch(`${API_URL}/shop/products/${productId}`, {
         method: "PUT",
-        credentials: "include",
+        headers: {
+          ...authHeader,
+        },
         body: formData,
       });
       if (!res.ok) throw new Error(await res.text());
@@ -65,9 +77,11 @@ export const useProducts = () => {
 
   const deleteProduct = async (productId: string) => {
     try {
-      const res = await fetch(`${API_URL}/products/${productId}`, {
+      const res = await fetch(`${API_URL}/shop/products/${productId}`, {
         method: "DELETE",
-        credentials: "include",
+        headers: {
+          ...authHeader,
+        },
       });
       if (!res.ok) throw new Error(await res.text());
       await fetchProducts();

@@ -33,7 +33,17 @@ app = FastAPI(
     title="Inventory Service",
     description="Microservicio para gestión de inventario",
     version="1.0.0",
-    openapi_tags=[{"name":"Inventario"}]
+    openapi_tags=[{"name":"Inventario"}],
+    redirect_slashes=False  # ❗ Desactiva la redirección automática de `/products` -> `/products/`
+)
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # O especifica ["http://localhost:4000"] si prefieres restringir
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # --- Middlewares ---
