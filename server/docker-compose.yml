@@ -75,6 +75,7 @@ services:
     image: quay.io/keycloak/keycloak:22.0.1
     command: >
       start-dev
+      --http-relative-path=/keycloak
       --hostname-strict=false
     environment:
       - KEYCLOAK_ADMIN=admin
@@ -92,6 +93,8 @@ services:
       - "traefik.http.routers.keycloak.rule=PathPrefix(`/keycloak`)"
       - "traefik.http.routers.keycloak.entrypoints=web"
       - "traefik.http.services.keycloak.loadbalancer.server.port=8080"
+
+
 
   consul:
     image: hashicorp/consul:latest
@@ -366,6 +369,7 @@ services:
       - consul
       - keycloak
       - config-server
+      
   memberships-service:
     build:
         context: ./memberships-service
