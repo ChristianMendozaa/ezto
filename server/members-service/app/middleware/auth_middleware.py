@@ -1,51 +1,49 @@
-# app/middleware/auth_middleware.py
+#promotions-service/app/middleware/auth_middleware.py
+import os
+from fastapi import HTTPException, Request
+from keycloak import KeycloakOpenID
+from jose import JWTError
 
-from starlette.middleware.base import BaseHTTPMiddleware
-from fastapi import Request, HTTPException
-from firebase_admin import auth
-import logging
+# Cargamos directo desde las env vars (Docker ya las inyecta)
+KEYCLOAK_URL    = os.getenv("KEYCLOAK_URL")      # ej: http://keycloak:8080/
+KEYCLOAK_REALM  = os.getenv("KEYCLOAK_REALM")    # ej: master
+KEYCLOAK_CLIENT = os.getenv("KEYCLOAK_CLIENT_ID")
+KEYCLOAK_SECRET = os.getenv("KEYCLOAK_CLIENT_SECRET")  # puede ser None
 
-logging.basicConfig(level=logging.INFO)
+keycloak_openid = KeycloakOpenID(
+    server_url=KEYCLOAK_URL,
+    realm_name=KEYCLOAK_REALM,
+    client_id=KEYCLOAK_CLIENT,
+    client_secret_key=KEYCLOAK_SECRET,  # omitir si cliente público
+    verify=True
+)
 
-class AuthMiddleware(BaseHTTPMiddleware):
-    """
-    Middleware de autenticación para verificar el token JWT de Firebase en la cookie 'authToken'.
-    Si el token está ausente, la solicitud continúa, pero sin credenciales de usuario.
-    Si el token existe y es inválido, lanza un HTTPException 401.
-    """
-    async def dispatch(self, request: Request, call_next):
-        # Permitir solicitudes OPTIONS sin interrupción
-        if request.method == "OPTIONS":
-            return await call_next(request)
+class AuthService:
+    @staticmethod
+    async def get_current_user(request: Request) -> dict:
+        auth_header = request.headers.get("Authorization", "")
+        if not auth_header.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Token missing")
+        token = auth_header.split(" ", 1)[1]
 
-        token = request.cookies.get("authToken")
+        # 1) Introspección para validar token
+        intros = keycloak_openid.introspect(token)
+        if not intros.get("active"):
+            raise HTTPException(status_code=401, detail="Token invalid or expired")
 
-        # Si no encuentra la cookie, buscar en headers "Cookie"
-        if not token:
-            raw_cookie = request.headers.get("Cookie", "")
-            if "authToken=" in raw_cookie:
-                try:
-                    token = raw_cookie.split("authToken=")[-1].split(";")[0]
-                except Exception:
-                    pass
+        # 2) Decodificar para extraer claims / roles
+        try:
+            decoded = keycloak_openid.decode_token(
+                token,
+                key=keycloak_openid.public_key(),
+                options={"verify_signature": True, "exp": True}
+            )
+        except JWTError:
+            raise HTTPException(status_code=401, detail="Token signature error")
 
-        if token:
-            try:
-                decoded_token = auth.verify_id_token(token)
-                request.state.user = decoded_token
-            except Exception as e:
-                logging.warning(f"Token inválido o ausente: {e}")
-                request.state.user = None  # Permitir que la solicitud continúe sin usuario autenticado
+        user_id = decoded.get("sub")
+        email   = decoded.get("email")
+        roles   = decoded.get("realm_access", {}).get("roles", [])
+        role    = "gym_owner" if "gym_owner" in roles else "gym_member"
 
-        else:
-            request.state.user = None
-
-        response = await call_next(request)
-
-        # Asegurar que las respuestas tengan los encabezados CORS correctos
-        response.headers["Access-Control-Allow-Origin"] = "http://localhost:3000"
-        response.headers["Access-Control-Allow-Credentials"] = "true"
-        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
-        response.headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type"
-
-        return response
+        return {"user_id": user_id, "email": email, "role": role}
