@@ -119,7 +119,7 @@ http:
         passHostHeader: true
         circuitBreaker:
           expression: "NetworkErrorRatio() > 0.5"
-          
+    
     memberships-service:
       loadBalancer:
         servers:
@@ -143,7 +143,7 @@ http:
         passHostHeader: true
         circuitBreaker:
           expression: "NetworkErrorRatio() > 0.5" 
-
+          
     keycloak:
       loadBalancer:
         servers:
@@ -248,7 +248,7 @@ http:
         - web
       middlewares:
         - retry-class
-        
+
     classes:
       rule: "PathPrefix(`/memberships`)"
       service: memberships-service
@@ -264,7 +264,7 @@ http:
         - web
       middlewares:
         - retry-members
-
+        
     keycloak:
       rule: "PathPrefix(`/keycloak`)"
       service: keycloak
@@ -291,7 +291,7 @@ http:
       retry:
         attempts: 3
         initialInterval: 500ms
-    
+
     retry-usermemberships:
       retry:
         attempts: 3
@@ -316,9 +316,8 @@ http:
       retry:
         attempts: 3
         initialInterval: 500ms  
-    
+
     retry-members:
       retry:
         attempts: 3
         initialInterval: 500ms
-
