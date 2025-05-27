@@ -1,36 +1,21 @@
-import { Inter } from "next/font/google"
-import "./globals.css"
-import { ThemeProvider } from "@/components/theme-provider"
-import { LanguageProvider } from "@/components/language-provider"
-import type React from "react"
-import { AuthProvider } from "@/lib/auth-context";
+// app/layout.tsx (🚫 sin "use client")
+import "./globals.css";
+import { Inter } from "next/font/google";
+import ClientRootLayout from "./ClientRootLayout";
 
-const inter = Inter({ subsets: ["latin"] })
-
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
-  return (
-    <AuthProvider>
-      <html lang="es" suppressHydrationWarning>
-        <body className={inter.className}>
-          <LanguageProvider>
-            <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-              {children}
-            </ThemeProvider>
-          </LanguageProvider>
-        </body>
-      </html>
-    </AuthProvider>
-  )
-}
-
-
-
-import './globals.css'
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata = {
-  generator: 'v0.dev'
+  title: "EzTo App",
+  description: "Plataforma EzTo",
 };
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="es" suppressHydrationWarning>
+      <body className={inter.className}>
+        <ClientRootLayout>{children}</ClientRootLayout>
+      </body>
+    </html>
+  );
+}

@@ -14,13 +14,14 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Textarea } from "@/components/ui/textarea"
-import { Calendar } from "@/components/ui/calendar"
+import { DatePickerInput } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { CalendarIcon, Dumbbell } from "lucide-react"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { LanguageToggle } from "@/components/language-toggle"
+import { useKeycloak } from "@react-keycloak/web";
 
 export default function RegisterPage() {
   const { t } = useLanguage()
@@ -29,13 +30,28 @@ export default function RegisterPage() {
   const [date, setDate] = useState<Date>()
   const [gymId, setGymId] = useState<string | null>(null);
   const [gender, setGender] = useState<string | null>(null);
+  const { keycloak } = useKeycloak();
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [selectedGoals, setSelectedGoals] = useState<string[]>([]);
+  const [selectedActivities, setSelectedActivities] = useState<string[]>([]);
+
+  const toggleGoal = (goal: string) => {
+    setSelectedGoals(prev =>
+      prev.includes(goal) ? prev.filter(g => g !== goal) : [...prev, goal]
+    );
+  };
+
+  const toggleActivity = (activity: string) => {
+    setSelectedActivities(prev =>
+      prev.includes(activity) ? prev.filter(a => a !== activity) : [...prev, activity]
+    );
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const formData = new FormData();
 
-    // 📌 Capturar campos obligatorios
     formData.append("full_name", (document.getElementById("fullName") as HTMLInputElement)?.value.trim() || "");
     formData.append("email", (document.getElementById("email") as HTMLInputElement)?.value.trim() || "");
     formData.append("password", (document.getElementById("password") as HTMLInputElement)?.value.trim() || "");
@@ -48,14 +64,12 @@ export default function RegisterPage() {
       return;
     }
 
-    // 📌 Capturar datos del Dueño de Gimnasio
     if (userType === "gym_owner") {
       formData.append("gym_name", (document.getElementById("gymName") as HTMLInputElement)?.value.trim() || "");
       formData.append("gym_address", (document.getElementById("gymAddress") as HTMLInputElement)?.value.trim() || "");
       formData.append("gym_phone", (document.getElementById("gymPhone") as HTMLInputElement)?.value.trim() || "");
       formData.append("opening_hours", (document.getElementById("gymHours") as HTMLInputElement)?.value.trim() || "");
 
-      // ✅ Capturar correctamente los servicios ofrecidos
       const selectedServices = Array.from(document.querySelectorAll('input[name="gym_services"]:checked'))
         .map((el) => (el as HTMLInputElement).value);
 
@@ -64,24 +78,20 @@ export default function RegisterPage() {
       formData.append("capacity", (document.getElementById("gymCapacity") as HTMLInputElement)?.value.trim() || "0");
       formData.append("social_media", (document.getElementById("gymSocial") as HTMLInputElement)?.value.trim() || "");
 
-      // Manejo de imagen (logo del gimnasio)
       const gymLogoInput = document.getElementById("gymLogo") as HTMLInputElement;
       if (gymLogoInput.files && gymLogoInput.files.length > 0) {
         formData.append("gym_logo", gymLogoInput.files[0]);
       }
     }
 
-    // 📌 Capturar datos del Miembro de Gimnasio
     if (userType === "gym_member") {
       if (!gymId) {
         alert("Por favor selecciona un gimnasio válido.");
         return;
       }
       formData.append("gym_id", gymId);
-
       formData.append("membership_number", (document.getElementById("membershipNumber") as HTMLInputElement)?.value.trim() || "");
 
-      // ✅ Capturar correctamente el `gender`
       if (!gender) {
         alert("Por favor selecciona un género.");
         return;
@@ -89,23 +99,15 @@ export default function RegisterPage() {
       formData.append("gender", gender);
 
       if (date) {
-        formData.append("birth_date", date.toISOString().split("T")[0]); // Formato YYYY-MM-DD
+        formData.append("birth_date", date.toISOString().split("T")[0]);
       }
 
-      // ✅ Capturar `training_goals` correctamente
-      const trainingGoals = ["loseWeight", "gainMuscle", "improveHealth"]
-        .filter(goal => (document.getElementById(`goal-${goal}`) as HTMLInputElement)?.checked)
-        .join(",");
-      formData.append("training_goals", trainingGoals || "");
-
-      // ✅ Capturar `activity_preferences` correctamente
-      const activityPreferences = ["groupClasses", "weights", "cardio", "yoga"]
-        .filter(activity => (document.getElementById(`activity-${activity}`) as HTMLInputElement)?.checked)
-        .join(",");
-      formData.append("activity_preferences", activityPreferences || "");
+      // ✅ Usa los estados controlados
+      formData.append("training_goals", selectedGoals.join(","));
+      formData.append("activity_preferences", selectedActivities.join(","));
     }
 
-    // 📌 Verificar que los datos están bien formateados antes de enviarlos
+    // Debug
     for (const [key, value] of formData.entries()) {
       console.log(`${key}: ${value}`);
     }
@@ -113,7 +115,7 @@ export default function RegisterPage() {
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/register`, {
         method: "POST",
-        body: formData, //   Enviar como multipart/form-data
+        body: formData,
         headers: {
           "Accept": "application/json",
         },
@@ -122,23 +124,30 @@ export default function RegisterPage() {
       if (!response.ok) {
         const errorData = await response.json();
         console.error("Datos de error recibidos:", errorData);
+
         if (Array.isArray(errorData.detail)) {
           const formattedErrors = errorData.detail
             .map((err: any) => `${err.loc.join(".")}: ${err.msg}`)
             .join("\n");
-          throw new Error(formattedErrors);
+          setErrorMessage(formattedErrors);
+          return;
         }
-        throw new Error(errorData.detail || "Error en el registro");
+
+        setErrorMessage(errorData.error || "Error en el registro");
+        return;
       }
 
       const data = await response.json();
       console.log("Usuario registrado:", data);
-      router.push("/login");
+
+      // ✅ Redirigir al home
+      router.push("/");
     } catch (error: any) {
       console.error("Error al registrar usuario:", error.message);
-      alert(error.message);
+      setErrorMessage(error.message || "Error desconocido");
     }
   };
+
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-100 dark:bg-gray-900">
@@ -165,9 +174,9 @@ export default function RegisterPage() {
           <div className="flex items-center gap-2">
             <LanguageToggle />
             <ThemeToggle />
-            <Link href="/login">
-              <Button variant="ghost">{t("common.signIn")}</Button>
-            </Link>
+            <Button variant="ghost" onClick={() => keycloak.login()}>
+              {t("common.signIn")}
+            </Button>
           </div>
         </div>
       </header>
@@ -268,7 +277,8 @@ export default function RegisterPage() {
               {userType === "gym_member" && (
                 <div className="space-y-4">
                   <h2 className="text-xl font-semibold">{t("auth.register.memberInfo")}</h2>
-                  <div className="grid grid-cols-2 gap-4">
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="selectGym">{t("auth.register.selectGym")}</Label>
                       <Select onValueChange={(value) => setGymId(value)}>
@@ -281,32 +291,18 @@ export default function RegisterPage() {
                           <SelectItem value="gym3">Gym 3</SelectItem>
                         </SelectContent>
                       </Select>
-
                     </div>
+
                     <div className="space-y-2">
                       <Label htmlFor="membershipNumber">{t("auth.register.membershipNumber")}</Label>
                       <Input id="membershipNumber" />
                     </div>
+
                     <div className="space-y-2">
                       <Label>{t("auth.register.dateOfBirth")}</Label>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant={"outline"}
-                            className={cn(
-                              "w-full justify-start text-left font-normal",
-                              !date && "text-muted-foreground",
-                            )}
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {date ? format(date, "PPP") : <span>{t("auth.register.pickADate")}</span>}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                          <Calendar mode="single" selected={date} onSelect={setDate} initialFocus />
-                        </PopoverContent>
-                      </Popover>
+                      <DatePickerInput selected={date} onChange={setDate} />
                     </div>
+
                     <div className="space-y-2">
                       <Label htmlFor="gender">{t("auth.register.gender")}</Label>
                       <Select onValueChange={(value) => setGender(value)}>
@@ -314,35 +310,45 @@ export default function RegisterPage() {
                           <SelectValue placeholder={t("auth.register.selectGender")} />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="male">{t("auth.register.genderMale")}</SelectItem>
-                          <SelectItem value="female">{t("auth.register.genderFemale")}</SelectItem>
-                          <SelectItem value="other">{t("auth.register.genderOther")}</SelectItem>
+                          <SelectItem value="Masculino">{t("auth.register.genderMale")}</SelectItem>
+                          <SelectItem value="Femenino">{t("auth.register.genderFemale")}</SelectItem>
+                          <SelectItem value="Otro">{t("auth.register.genderOther")}</SelectItem>
                         </SelectContent>
                       </Select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>{t("auth.register.trainingGoals")}</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {["loseWeight", "gainMuscle", "improveHealth"].map((goal) => (
+                        <div key={goal} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`goal-${goal}`}
+                            checked={selectedGoals.includes(goal)}
+                            onCheckedChange={() => toggleGoal(goal)}
+                          />
+                          <Label htmlFor={`goal-${goal}`}>{t(`auth.register.goals.${goal}`)}</Label>
+                        </div>
+                      ))}
 
                     </div>
-                    <div className="space-y-2 col-span-2">
-                      <Label>{t("auth.register.trainingGoals")}</Label>
-                      <div className="grid grid-cols-2 gap-2">
-                        {["loseWeight", "gainMuscle", "improveHealth"].map((goal) => (
-                          <div key={goal} className="flex items-center space-x-2">
-                            <Checkbox id={`goal-${goal}`} value={goal} /> {/* ✅ Asignar id único */}
-                            <Label htmlFor={`goal-${goal}`}>{t(`auth.register.goals.${goal}`)}</Label>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+                  </div>
 
-                    <div className="space-y-2 col-span-2">
-                      <Label>{t("auth.register.activityPreferences")}</Label>
-                      <div className="grid grid-cols-2 gap-2">
-                        {["groupClasses", "weights", "cardio", "yoga"].map((activity) => (
-                          <div key={activity} className="flex items-center space-x-2">
-                            <Checkbox id={`activity-${activity}`} value={activity} /> {/* ✅ Asignar id único */}
-                            <Label htmlFor={`activity-${activity}`}>{t(`auth.register.activities.${activity}`)}</Label>
-                          </div>
-                        ))}
-                      </div>
+                  <div className="space-y-2">
+                    <Label>{t("auth.register.activityPreferences")}</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {["groupClasses", "weights", "cardio", "yoga"].map((activity) => (
+                        <div key={activity} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`activity-${activity}`}
+                            checked={selectedActivities.includes(activity)}
+                            onCheckedChange={() => toggleActivity(activity)}
+                          />
+                          <Label htmlFor={`activity-${activity}`}>{t(`auth.register.activities.${activity}`)}</Label>
+                        </div>
+                      ))}
+
                     </div>
                   </div>
                 </div>
@@ -352,13 +358,18 @@ export default function RegisterPage() {
                 {t("auth.register.registerButton")}
               </Button>
             </form>
+            {errorMessage && (
+              <div className="text-red-500 font-medium text-sm text-center">
+                {errorMessage}
+              </div>
+            )}
           </CardContent>
           <CardFooter className="flex justify-center">
             <p className="text-sm text-muted-foreground">
               {t("auth.register.haveAccount")}{" "}
-              <Link href="/login" className="text-primary hover:underline">
-                {t("auth.register.login")}
-              </Link>
+              <Button variant="ghost" onClick={() => keycloak.login()}>
+                {t("common.signIn")}
+              </Button>
             </p>
           </CardFooter>
         </Card>

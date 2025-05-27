@@ -7,7 +7,7 @@ from typing import Optional
 from datetime import date, datetime
 from app.utils.response_helper import success_response, error_response
 from app.models.responses_models import RegisterResponse
-import re
+from fastapi import HTTPException
 
 router = APIRouter()
 
@@ -167,7 +167,9 @@ async def register_user(
         # Devolver la respuesta correcta con el UID real
         return RegisterResponse(message=result["message"], uid=result["uid"])
 
+    except HTTPException as e:
+        return error_response(e.detail, e.status_code)
     except Exception as e:
         print("Error durante el registro de usuario:")
-        traceback.print_exc()  # Imprime el traceback completo
-        return error_response(str(e), 500)
+        traceback.print_exc()
+        return error_response("Error interno en el servidor", 500)

@@ -16,7 +16,9 @@ def _maybe_decrypt(val: str) -> str:
     if isinstance(val, str) and val.startswith("{cipher}"):
         cipher_text = val[len("{cipher}"):]
         result = decrypt_value(cipher_text)
+        print(f"[firebase_config] Decrypted: {result}")  # Debug
         return result
+    print(f"[firebase_config] Raw: {val}")  # Debug
     return val
 
 def _normalize_newlines(s: str) -> str:
@@ -37,6 +39,11 @@ service_account_info = {
     "client_x509_cert_url":        _maybe_decrypt(cfg.get("client_x509_cert_url", "")),
     "universe_domain":             _maybe_decrypt(cfg.get("universe_domain", "")),
 }
+
+# Debug: imprimir todo el dict reconstruido
+print("[firebase_config] service_account_info:")
+for k, v in service_account_info.items():
+    print(f"  {k}: {repr(v)}")
 
 # 3) Inicializa Firebase solo una vez
 if not firebase_admin._apps:

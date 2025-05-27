@@ -1,3 +1,5 @@
+# app/models/class_model.py
+
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
@@ -14,7 +16,7 @@ class ClassEntity:
     location: Optional[str]
     status: bool
 
-    def to_dict(self):
+    def to_dict(self) -> dict:
         return {
             "id": self.id,
             "name": self.name,
@@ -27,20 +29,16 @@ class ClassEntity:
             "status": self.status
         }
 
-    @staticmethod
-    def from_dict(data: dict):
-        return ClassEntity(
+    @classmethod
+    def from_dict(cls, data: dict) -> "ClassEntity":
+        return cls(
             id=data.get("id"),
             name=data["name"],
             description=data["description"],
             instructor=data["instructor"],
             start_time=datetime.fromisoformat(data["start_time"]),
             end_time=datetime.fromisoformat(data["end_time"]),
-            capacity=data["capacity"],
+            capacity=int(data["capacity"]),
             location=data.get("location"),
-            status=data["status"]
+            status=bool(data["status"])
         )
-
-    def to_dto(self):
-        from app.models.dtos.class_dto import ClassDTO
-        return ClassDTO(**self.to_dict())

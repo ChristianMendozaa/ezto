@@ -103,8 +103,3 @@ def health_check():
 @app.get("/config-health")
 def config_health():
     return {"status": "up", "config_profile": PROFILE, "config": cfg}
-
-if __name__ == "__main__":
-    import uvicorn
-
-    uvicorn.run("app.main:app", host=HOST, port=PORT, reload=True)
