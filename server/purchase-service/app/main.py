@@ -32,9 +32,18 @@ app = FastAPI(
     title="Purchase Service",
     description="Microservicio para gestión de ventas",
     version="1.0.0",
-    openapi_tags=[{"name": "Compras"}]
+    openapi_tags=[{"name": "Compras"}],
+    redirect_slashes=False  # ❗ Desactiva la redirección automática de `/products` -> `/products/`
 )
 
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # O especifica ["http://localhost:4000"] si prefieres restringir
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 # --- Middlewares ---
 app.add_middleware(
     CORSMiddleware,

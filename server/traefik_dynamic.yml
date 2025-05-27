@@ -1,156 +1,12 @@
-http:  
-  services:
-    config-server:
-      loadBalancer:
-        servers:
-          - url: "http://config-server:${CONFIG_SERVER_PORT}"
-        healthCheck:
-          path: "/health"
-          interval: "5s"
-          timeout: "3s"
-        passHostHeader: true
-        circuitBreaker:
-          expression: "NetworkErrorRatio() > 0.5"
-
-    auth-service:
-      loadBalancer:
-        servers:
-          - url: "http://auth-service:8000"
-        healthCheck:
-          path: "/health"
-          interval: "5s"
-          timeout: "3s"
-        passHostHeader: true
-        circuitBreaker:
-          expression: "NetworkErrorRatio() > 0.5"
-
-    inventory-service:
-      loadBalancer:
-        servers:
-          - url: "http://inventory-service:${PORT_INVENTORY}"
-        healthCheck:
-          path: "/health"
-          interval: "5s"
-          timeout: "3s"
-        passHostHeader: true
-        circuitBreaker:
-          expression: "NetworkErrorRatio() > 0.5"
-
-    purchase-service:
-      loadBalancer:
-        servers:
-          - url: "http://purchase-service:${PORT_PURCHASE}"
-        healthCheck:
-          path: "/health"
-          interval: "5s"
-          timeout: "3s"
-        passHostHeader: true
-        circuitBreaker:
-          expression: "NetworkErrorRatio() > 0.5"
-
-    shop-service:
-      loadBalancer:
-        servers:
-          - url: "http://shop-service:${PORT_SHOP}"
-        healthCheck:
-          path: "/health"
-          interval: "5s"
-          timeout: "3s"
-        passHostHeader: true
-        circuitBreaker:
-          expression: "NetworkErrorRatio() > 0.5"
-
-    supplier-service:
-      loadBalancer:
-        servers:
-          - url: "http://supplier-service:${PORT_SUPPLIER}"
-        healthCheck:
-          path: "/health"
-          interval: "5s"
-          timeout: "3s"
-        passHostHeader: true
-        circuitBreaker:
-          expression: "NetworkErrorRatio() > 0.5"
-
-    promotions-service:
-      loadBalancer:
-        servers:
-          - url: "http://promotions-service:${PORT_PROMOTIONS}"
-        healthCheck:
-          path: "/health"
-          interval: "5s"
-          timeout: "3s"
-        passHostHeader: true
-        circuitBreaker:
-          expression: "NetworkErrorRatio() > 0.5"
-
-    usermemberships-service:
-      loadBalancer:
-        servers:
-          - url: "http://usermembership-service:${PORT_USERMEMBERSHIP}"
-        healthCheck:
-          path: "/health"
-          interval: "5s"
-          timeout: "3s"
-        passHostHeader: true
-        circuitBreaker:
-          expression: "NetworkErrorRatio() > 0.5"
-    
-    class-service:
-      loadBalancer:
-        servers:
-          - url: "http://class-service:${PORT_CLASSES}"
-        healthCheck:
-          path: "/health"
-          interval: "5s"
-          timeout: "3s"
-        passHostHeader: true
-        circuitBreaker:
-          expression: "NetworkErrorRatio() > 0.5"
-    
-    reservations-service:
-      loadBalancer:
-        servers:
-          - url: "http://reservations-service:${PORT_RESERVATIONS}"
-        healthCheck:
-          path: "/health"
-          interval: "5s"
-          timeout: "3s"
-        passHostHeader: true
-        circuitBreaker:
-          expression: "NetworkErrorRatio() > 0.5"
-
-    keycloak:
-      loadBalancer:
-        servers:
-          - url: "http://keycloak:8080"
-        healthCheck:
-          path: "/"
-          interval: "5s"
-          timeout: "3s"
-        passHostHeader: true
-        circuitBreaker:
-          expression: "NetworkErrorRatio() > 0.5"
-
-    consul:
-      loadBalancer:
-        servers:
-          - url: "http://consul:8500"
-        healthCheck:
-          path: "/v1/status/leader"
-          interval: "5s"
-          timeout: "3s"
-        passHostHeader: true
-        circuitBreaker:
-          expression: "NetworkErrorRatio() > 0.5"
-
+http:
   routers:
-   
     config-api:
       rule: "PathPrefix(`/config`)"
       service: config-server
       entryPoints:
         - web
+      middlewares:
+        - config-strip
 
     auth:
       rule: "PathPrefix(`/auth`)"
@@ -158,6 +14,7 @@ http:
       entryPoints:
         - web
       middlewares:
+        - strip-auth
         - retry-auth
 
     inventory:
@@ -166,6 +23,7 @@ http:
       entryPoints:
         - web
       middlewares:
+        - inventory-strip
         - retry-auth
 
     purchase:
@@ -174,6 +32,7 @@ http:
       entryPoints:
         - web
       middlewares:
+        - purchase-strip
         - retry-auth
 
     shop:
@@ -182,6 +41,7 @@ http:
       entryPoints:
         - web
       middlewares:
+        - shop-strip
         - retry-auth
 
     supplier:
@@ -190,6 +50,7 @@ http:
       entryPoints:
         - web
       middlewares:
+        - supplier-strip
         - retry-auth
 
     promotions:
@@ -198,14 +59,16 @@ http:
       entryPoints:
         - web
       middlewares:
+        - promotions-strip
         - retry-promotions
 
     usermemberships:
       rule: "PathPrefix(`/usermemberships`)"
-      service: usermembership-service
+      service: usermemberships-service
       entryPoints:
         - web
       middlewares:
+        - usermemberships-strip
         - retry-usermembership
 
     reservations:
@@ -214,15 +77,16 @@ http:
       entryPoints:
         - web
       middlewares:
+        - reservations-strip
         - retry-reservations
-        
-    
+
     classes:
       rule: "PathPrefix(`/classes`)"
       service: class-service
       entryPoints:
         - web
       middlewares:
+        - classes-strip
         - retry-class
 
     keycloak:
@@ -241,6 +105,9 @@ http:
       middlewares:
         - retry-auth
 
+  services:
+    # Se definen en base a etiquetas de los contenedores (no es necesario repetirlos aquí)
+
   middlewares:
     retry-auth:
       retry:
@@ -252,7 +119,7 @@ http:
         attempts: 3
         initialInterval: 500ms
 
-    retry-usermemberships:
+    retry-usermembership:
       retry:
         attempts: 3
         initialInterval: 500ms
@@ -266,8 +133,55 @@ http:
       retry:
         attempts: 3
         initialInterval: 500ms
-    
+
     retry-reservations:
       retry:
         attempts: 3
-        initialInterval: 500ms  
+        initialInterval: 500ms
+
+    config-strip:
+      stripPrefix:
+        prefixes:
+          - /config
+
+    strip-auth:
+      stripPrefix:
+        prefixes:
+          - /auth
+
+    shop-strip:
+      stripPrefix:
+        prefixes:
+          - /shop
+    inventory-strip:
+      stripPrefix:
+        prefixes:
+          - /inventory
+    purchase-strip: 
+      stripPrefix:
+        prefixes:
+          - /purchase
+    supplier-strip:
+      stripPrefix:
+        prefixes:
+          - /supplier
+
+    promotions-strip:
+      stripPrefix:
+        prefixes:
+          - /promotions
+
+    usermemberships-strip:
+      stripPrefix:
+        prefixes:
+          - /usermemberships
+
+    reservations-strip:
+      stripPrefix:
+        prefixes:
+          - /reservations
+
+    classes-strip:
+      stripPrefix:
+        prefixes:
+          - /classes
