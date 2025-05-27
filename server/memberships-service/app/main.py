@@ -1,35 +1,40 @@
-# main.py (Microservicio de Reservas)
-from fastapi import FastAPI, Request
+# main.py (Microservicio de Membresías)
 
+from fastapi import FastAPI, Request, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
-from contextlib import asynccontextmanager
-from starlette.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
+from starlette.middleware.trustedhost import TrustedHostMiddleware
+from contextlib import asynccontextmanager
 
+from app.controllers.membership_controller import router as membership_router
 from app.middleware.rate_limit_middleware import RateLimitMiddleware
-from app.controllers.reservation_controller import router as reservation_router
 from fastapi.exceptions import RequestValidationError
-from app.utils.exception_handlers import global_exception_dispatcher, request_validation_exception_handler
+from app.utils.exception_handlers import (
+    global_exception_dispatcher,
+    request_validation_exception_handler,
+)
 from app.utils.consul_register import register_service_in_consul
 
-# Configuración centralizada
+# configuración centralizada
 from .config_loader import fetch_config, PROFILE
 
 cfg = fetch_config()
 HOST = cfg.get("host", "0.0.0.0")
-PORT = int(cfg.get("port", 8010))
+PORT = int(cfg.get("port", 8007))
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    register_service_in_consul("reservation-service", PORT)
+    register_service_in_consul("memberships-service", PORT)
     yield
 
+
 app = FastAPI(
-    title="Gestión de Reservas - Plataforma EzTo",
-    description="Microservicio para la gestión de reservas en clases del gimnasio dentro del sistema EzTo.",
+    title="Gestión de Planes de Membresía – Plataforma EzTo",
+    description="Microservicio para la gestión de planes de membresía dentro del sistema EzTo.",
     version="1.0.0",
     lifespan=lifespan,
-    root_path="/reservations",
+    root_path="/memberships-plans",
     contact={
         "name": "Equipo EzTo",
         "url": "https://eztoplatform.com/contact",
@@ -40,11 +45,14 @@ app = FastAPI(
         "url": "https://opensource.org/licenses/MIT",
     },
     openapi_tags=[
-        {"name": "Reservas", "description": "Endpoints relacionados con la gestión de reservas."},
-    ]
+        {
+            "name": "Membresías",
+            "description": "Endpoints relacionados con la gestión de planes de membresía.",
+        }
+    ],
 )
 
-# Configuración de CORS
+# CORS: permitir llamadas desde el frontend
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000"],
@@ -53,12 +61,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Middleware de Rate Limiting
+# Rate limiting
 app.add_middleware(RateLimitMiddleware)
 
-# Middleware de GZIP
+# Compresión GZIP para respuestas grandes
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
+# Encabezados de seguridad
 @app.middleware("http")
 async def security_headers(request: Request, call_next):
     response = await call_next(request)
@@ -68,7 +77,7 @@ async def security_headers(request: Request, call_next):
             "default-src 'self'; "
             "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; "
             "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; "
-            "img-src 'self' https://fastapi.tiangolo.com; "
+            "img-src 'self'; "
             "font-src 'self' https://cdnjs.cloudflare.com; "
             "connect-src 'self'; "
             "frame-ancestors 'self'; "
@@ -83,23 +92,29 @@ async def security_headers(request: Request, call_next):
     })
     return response
 
-# Middleware para restringir hosts permitidos
+# Hosts permitidos
 app.add_middleware(
     TrustedHostMiddleware,
     allowed_hosts=["*"],
 )
 
-# Manejadores de excepciones personalizados
+# Manejadores de excepción personalizados
 app.add_exception_handler(RequestValidationError, request_validation_exception_handler)
 app.add_exception_handler(Exception, global_exception_dispatcher)
 
-# Incluir router de reservas
-app.include_router(reservation_router, prefix="/reservations", tags=["Reservas"])
+# Enrutar controladores
+app.include_router(
+    membership_router,
+    prefix="/memberships-plans",
+    tags=["Membresías"]
+)
 
+# Health checks
 @app.get("/health", tags=["Monitoreo"])
 def health_check():
     return {"status": "ok"}
 
-@app.get("/config-health")
+@app.get("/config-health", tags=["Monitoreo"])
 def config_health():
     return {"status": "up", "config_profile": PROFILE, "config": cfg}
+
