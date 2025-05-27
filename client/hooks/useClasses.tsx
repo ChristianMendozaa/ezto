@@ -4,7 +4,7 @@ import { useKeycloak } from "@react-keycloak/web";
 // Ajusta si tu gateway corre en otro URL/puerto
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_GATEWAY_URL?.replace(/\/$/, "") ||
-  "http://localhost/";
+  "http://localhost";
 
 export interface ClassDTO {
   id?: string;

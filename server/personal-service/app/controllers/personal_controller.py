@@ -8,7 +8,7 @@ from app.utils.response_standardization import SuccessResponse, StandardResponse
 from app.services.auth_service import AuthService
 import logging
 
-router = APIRouter(prefix="/personal", tags=["Personal"])
+router = APIRouter(tags=["Personal"])
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
