@@ -1,19 +1,25 @@
-"use client";
+// app/members/MembersPage.tsx
+"use client"
 
-import { useState, useEffect } from "react";
-import { useLanguage } from "@/lib/hooks/use-language";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { useEffect, useState } from "react"
+import { useLanguage } from "@/lib/hooks/use-language"
+import { Member, useMembers } from "@/hooks/useMembers"
+import { useNfcPairing } from "@/hooks/useNfcPairing"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, MoreHorizontal, Trash2 } from "lucide-react";
+import { Search, Plus, MoreHorizontal, Edit, Trash2, CreditCard } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@/components/ui/dropdown-menu"
 import {
   Dialog,
   DialogContent,
@@ -21,207 +27,291 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-
-interface Member {
-  id: string;
-  name: string;
-  email: string;
-  join_date: string;
-  nfc_id: string;
-  status: string;
-}
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
 
 export default function MembersPage() {
-  const { t } = useLanguage();
-  const [members, setMembers] = useState<Member[]>([]);
-  const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
-  const [newMember, setNewMember] = useState<Partial<Member>>({ name: "", email: "" });
-  const [loading, setLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
+  const { t } = useLanguage()
+  const [filter, setFilter] = useState("all")
+  const [isAddMemberOpen, setIsAddMemberOpen] = useState(false)
+  const [isPairNfcOpen, setIsPairNfcOpen] = useState(false)
+  const [lastCreatedMember, setLastCreatedMember] = useState<Member | null>(null)
+  const [isEditOpen, setIsEditOpen] = useState(false)
+  const [editMember, setEditMember] = useState<Member | null>(null)
+  const [localPairingCode, setLocalPairingCode] = useState<string | null>(null)
 
-  const getAuthToken = () => localStorage.getItem("token") || "";
+  const { generatePairingCode, pairingCode, loading: pairingLoading, error: pairingError } = useNfcPairing()
+
+  const {
+    members,
+    fetchMembers,
+    createMember,
+    deleteMember,
+    updateMember,
+    loading,
+    error
+  } = useMembers()
 
   useEffect(() => {
-    const fetchMembers = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch("http://localhost:8005/members", {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${getAuthToken()}`,
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-        });
-  
-        if (!response.ok) throw new Error("Error en la autenticación o petición");
-  
-        const data = await response.json();
-  
-        // Asegurar que cada miembro tenga un ID válido
-        const membersWithId = data.map((doc: any) => ({
-          id: doc.id || crypto.randomUUID(),  // Usa el ID del documento o genera uno temporal
-          ...doc
-        }));
-  
-        setMembers(membersWithId);
-      } catch (error) {
-        console.error("Error fetching members:", error);
-        setErrorMessage("Hubo un error al obtener los miembros.");
-      } finally {
-        setLoading(false);
-      }
-    };
-  
-    fetchMembers();
-  }, []);
-  
+    fetchMembers()
+  }, [fetchMembers])
 
-  const handleAddMember = async () => {
-    try {
-      // Si tienes un id específico o quieres que Firebase lo maneje,
-      const generatedId = crypto.randomUUID();
-
-      // Crear los datos del nuevo miembro
-      const newMemberData = {
-        id: generatedId,  // Establecemos el ID generado
-        ...newMember,
-        status: "activo",  // Valor por defecto
-        join_date: new Date().toISOString(),  // Fecha en formato ISO 8601
-      };
-      const response = await fetch("http://localhost:8005/members", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${getAuthToken()}`,
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify(newMemberData),
-      });
-  
-      if (!response.ok) throw new Error("Error al agregar miembro");
-  
-      const newEntry: Member = await response.json();
-      setMembers((prevMembers) => [...prevMembers, newEntry]);
-      setIsAddMemberOpen(false);
-      setSuccessMessage("Miembro agregado exitosamente.");
-    } catch (error) {
-      console.error("Error adding member:", error);
-      setErrorMessage("");
+  useEffect(() => {
+    if (pairingCode) {
+      setLocalPairingCode(pairingCode);
     }
-  };
+  }, [pairingCode])
 
-  const handleDeleteMember = async (id: string) => {
-    try {
-      const response = await fetch(`http://localhost:8005/members/${id}`, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${getAuthToken()}`,
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-      });
+  const filteredMembers = members.filter((member) => {
+    if (filter === "all") return true
+    return member.status === filter
+  })
 
-      if (!response.ok) throw new Error("Error al eliminar miembro");
+  const handleEdit = (member: Member) => {
+    setEditMember(member)
+    setIsEditOpen(true)
+  }
 
-      setMembers((prevMembers) => prevMembers.filter((member) => member.id !== id));
-      setSuccessMessage("Miembro eliminado exitosamente.");
-    } catch (error) {
-      console.error("Error deleting member:", error);
-      setErrorMessage("Hubo un error al eliminar el miembro.");
-    }
-  };
+  const handleUpdate = async () => {
+    if (!editMember) return
+    await updateMember(editMember.id, editMember)
+    setIsEditOpen(false)
+  }
 
   return (
     <div className="flex-1 space-y-4 p-8 pt-6">
       <div className="flex items-center justify-between space-y-2">
         <h2 className="text-3xl font-bold tracking-tight">{t("members.title")}</h2>
-        <Button onClick={() => setIsAddMemberOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          {t("members.add")}
-        </Button>
+        <div className="flex items-center space-x-2">
+          <Dialog open={isAddMemberOpen} onOpenChange={setIsAddMemberOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                {t("members.add")}
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>{t("members.addMember")}</DialogTitle>
+                <DialogDescription>{t("members.addMemberDescription")}</DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="name" className="text-right">
+                    {t("members.form.name")}
+                  </Label>
+                  <Input id="name" className="col-span-3" />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="email" className="text-right">
+                    {t("members.form.email")}
+                  </Label>
+                  <Input id="email" className="col-span-3" />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button
+                  type="submit"
+                  onClick={async () => {
+                    const newMember: Member = {
+                      id: "",
+                      name: (document.getElementById("name") as HTMLInputElement).value,
+                      email: (document.getElementById("email") as HTMLInputElement).value,
+                      nfc_id: "",
+                      status: "activo",
+                      join_date: new Date().toISOString(),
+                    };
+
+                    const created = await createMember(newMember);
+                    console.log("🧾 Miembro creado:", created);
+                    setLastCreatedMember(created.data);
+                    setLocalPairingCode(null);
+                    setIsAddMemberOpen(false);
+                    setTimeout(() => setIsPairNfcOpen(true), 100);
+                  }}
+                >
+                  {t("members.form.save")}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={isPairNfcOpen} onOpenChange={setIsPairNfcOpen}>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Emparejar tarjeta NFC</DialogTitle>
+                <DialogDescription>
+                  Genera un código de emparejamiento para el miembro y úsalo en la app móvil.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                {lastCreatedMember ? (
+                  <>
+                    <p><strong>Miembro:</strong> {lastCreatedMember.name}</p>
+                    <p><strong>Email:</strong> {lastCreatedMember.email}</p>
+                    <Button
+                      onClick={async () => {
+                        await generatePairingCode(lastCreatedMember.id);
+                        if (pairingError) {
+                          alert("Error al generar el código: " + pairingError);
+                        }
+                      }}
+                    >
+                      {pairingLoading ? "Generando..." : "Generar código de emparejamiento"}
+                    </Button>
+                    {localPairingCode && (
+                      <p className="text-green-600 font-semibold mt-2">Código generado: {localPairingCode}</p>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-sm text-muted">No se pudo obtener el miembro recién creado.</p>
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          {/* Editar miembro */}
+          <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>{t("members.editMember")}</DialogTitle>
+              </DialogHeader>
+              {editMember && (
+                <div className="grid gap-4 py-4">
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="edit-name" className="text-right">
+                      {t("members.form.name")}
+                    </Label>
+                    <Input
+                      id="edit-name"
+                      className="col-span-3"
+                      value={editMember.name}
+                      onChange={(e) => setEditMember({ ...editMember, name: e.target.value })}
+                    />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="edit-email" className="text-right">
+                      {t("members.form.email")}
+                    </Label>
+                    <Input
+                      id="edit-email"
+                      className="col-span-3"
+                      value={editMember.email}
+                      onChange={(e) => setEditMember({ ...editMember, email: e.target.value })}
+                    />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="edit-nfc" className="text-right">
+                      {t("members.form.nfcCard")}
+                    </Label>
+                    <Input
+                      id="edit-nfc"
+                      className="col-span-3"
+                      value={editMember.nfc_id || ""}
+                      onChange={(e) => setEditMember({ ...editMember, nfc_id: e.target.value })}
+                    />
+                  </div>
+                </div>
+              )}
+              <DialogFooter>
+                <Button onClick={handleUpdate}>{t("members.form.save")}</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
-      {errorMessage && <p className="text-red-500">{errorMessage}</p>}
-      {successMessage && <p className="text-green-500">{successMessage}</p>}
-      {loading && <p className="text-center text-gray-500">Cargando miembros...</p>}
-
-      <Dialog open={isAddMemberOpen} onOpenChange={setIsAddMemberOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t("members.addMember")}</DialogTitle>
-            <DialogDescription>{t("members.addMemberDescription")}</DialogDescription>
-          </DialogHeader>
-          <Input
-            placeholder={t("members.form.name")}
-            onChange={(e) => setNewMember({ ...newMember, name: e.target.value })}
-          />
-          <Input
-            placeholder={t("members.form.email")}
-            onChange={(e) => setNewMember({ ...newMember, email: e.target.value })}
-          />
-          <DialogFooter>
-            <Button onClick={handleAddMember}>{t("members.form.save")}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>{t("members.table.name")}</TableHead>
-            <TableHead>{t("members.table.email")}</TableHead>
-            <TableHead>{t("members.table.status")}</TableHead>
-            <TableHead>{t("members.table.joinDate")}</TableHead>
-            <TableHead className="text-right">{t("members.table.actions")}</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {members.length > 0 ? (
-            members.map((member) => (
-              <TableRow key={member.id}>
-                <TableCell>{member.name}</TableCell>
-                <TableCell>{member.email}</TableCell>
-                <TableCell>
-                  <Badge
-                    className={`
-                      ${member.status === "activo" ? "bg-green-500 text-white" : ""}
-                      ${member.status === "inactivo" ? "bg-red-500 text-white" : ""}
-                      ${member.status === "suspendido" ? "bg-gray-500 text-white" : ""}
-                    `}
-                  >
-                    {t(`${member.status}`)}
-                  </Badge>
-                </TableCell>
-                <TableCell>{new Date(member.join_date).toISOString().split("T")[0]}</TableCell>
-                <TableCell className="text-right">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" className="h-8 w-8 p-0">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuLabel>{t("members.actions.title")}</DropdownMenuLabel>
-                      <DropdownMenuItem onClick={() => handleDeleteMember(member.id)}>
-                        <Trash2 className="mr-2 h-4 w-4" /> {t("members.actions.delete")}
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </TableRow>
-            ))
-          ) : (
-            <TableRow>
-              <TableCell colSpan={3} className="text-center">
-                {t("members.noMembers")}
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
+      <div className="flex flex-col space-y-4">
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("members.title")}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex justify-between mb-4">
+              <div className="flex w-full max-w-sm items-center space-x-2">
+                <Input placeholder={t("members.search")} className="w-[300px]" />
+                <Button type="submit" size="icon">
+                  <Search className="h-4 w-4" />
+                </Button>
+              </div>
+              <Select value={filter} onValueChange={setFilter}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder={t("members.filter.all")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t("members.filter.all")}</SelectItem>
+                  <SelectItem value="activo">{t("members.filter.active")}</SelectItem>
+                  <SelectItem value="inactivo">{t("members.filter.inactive")}</SelectItem>
+                  <SelectItem value="suspendido">{t("members.filter.suspended")}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t("members.table.name")}</TableHead>
+                  <TableHead>{t("members.table.email")}</TableHead>
+                  <TableHead>{t("members.table.status")}</TableHead>
+                  <TableHead>{t("members.table.joinDate")}</TableHead>
+                  <TableHead className="text-right">{t("members.table.actions")}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredMembers.map((member) => (
+                  <TableRow key={member.id}>
+                    <TableCell className="font-medium">{member.name}</TableCell>
+                    <TableCell>{member.email}</TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={
+                          member.status === "activo"
+                            ? "success"
+                            : member.status === "inactivo"
+                              ? "secondary"
+                              : "destructive"
+                        }
+                      >
+                        {t(`members.status.${member.status}`)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{new Date(member.join_date).toLocaleDateString()}</TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" className="h-8 w-8 p-0">
+                            <span className="sr-only">{t("members.actions.open")}</span>
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>{t("members.actions.title")}</DropdownMenuLabel>
+                          <DropdownMenuItem onClick={() => navigator.clipboard.writeText(member.email)}>
+                            {t("members.actions.copyEmail")}
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => handleEdit(member)}>
+                            <Edit className="mr-2 h-4 w-4" />
+                            {t("members.actions.edit")}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleEdit(member)}>
+                            <CreditCard className="mr-2 h-4 w-4" />
+                            {t("members.actions.manageNFC")}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => deleteMember(member.id)}>
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            {t("members.actions.delete")}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      </div>
     </div>
-  );
+  )
 }

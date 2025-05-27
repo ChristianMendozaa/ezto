@@ -12,7 +12,7 @@ class MemberDTO(BaseModel):
     id: str = Field(None, description="ID del miembro")
     name: constr(min_length=3, max_length=100) = Field(..., description="Nombre del miembro")
     email: str = Field(..., description="Correo electrónico válido del miembro")
-    nfc_id: Optional[constr(min_length=3, max_length=50)] = Field(None, description="ID NFC del miembro (opcional)")
+    nfc_id: Optional[str] = Field(None, description="ID NFC del miembro (opcional)")
     status: MemberStatus = Field(..., description="Estado del miembro")
     join_date: datetime = Field(..., description="Fecha de ingreso del miembro")
 

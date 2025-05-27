@@ -49,14 +49,14 @@ app = FastAPI(
 # Configuración de CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Ajusta según tu frontend
+    allow_origins=["http://localhost:4000"],  # Ajusta según tu frontend
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # Middleware de Rate Limiting
-app.add_middleware(RateLimitMiddleware)
+#app.add_middleware(RateLimitMiddleware)
 
 # Middleware de GZIP para comprimir respuestas (mínimo 1KB)
 app.add_middleware(GZipMiddleware, minimum_size=1000)
