@@ -75,7 +75,6 @@ services:
     image: quay.io/keycloak/keycloak:22.0.1
     command: >
       start-dev
-      --http-relative-path=/keycloak
       --hostname-strict=false
     environment:
       - KEYCLOAK_ADMIN=admin
@@ -369,7 +368,35 @@ services:
       - consul
       - keycloak
       - config-server
-
+  event-service:
+    build:
+      context: ./event-service
+      dockerfile: Dockerfile
+    volumes:
+      - ./event-service:/app
+    ports:
+      - "${PORT_EVENTS}:8013"
+    command: uvicorn app.main:app --host 0.0.0.0 --port ${PORT_EVENTS} --reload
+    env_file: ./event-service/.env
+    environment:
+      - ENV=development
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.events.rule=PathPrefix(`/events`)"
+      - "traefik.http.routers.events.entrypoints=web"
+      - "traefik.http.routers.events.middlewares=events-headers"
+      - "traefik.http.middlewares.events-strip-prefix.stripprefix.prefixes=/events"
+      - "traefik.http.middlewares.events-headers.headers.customrequestheaders.X-From-Traefik=EzTo"
+      - "traefik.http.services.events.loadbalancer.healthcheck.path=/health"
+      - "traefik.http.services.events.loadbalancer.healthcheck.interval=5s"
+      - "traefik.http.services.events.loadbalancer.healthcheck.timeout=3s"
+      - "traefik.http.services.events.loadbalancer.server.port=${PORT_EVENTS}"
+    networks:
+      - ezto
+    depends_on:
+      - consul
+      - keycloak
+      - config-server
   memberships-service:
     build:
         context: ./memberships-service

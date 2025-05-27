@@ -132,6 +132,18 @@ http:
         circuitBreaker:
             expression: "NetworkErrorRatio() > 0.5"
 
+    event-service:
+      loadBalancer:
+        servers:
+          - url: "http://event-service:${PORT_EVENTS}"
+        healthCheck:
+          path: "/health"
+          interval: "5s"
+          timeout: "3s"
+        passHostHeader: true
+        circuitBreaker:
+          expression: "NetworkErrorRatio() > 0.5"
+
     keycloak:
       loadBalancer:
         servers:
@@ -245,6 +257,14 @@ http:
       middlewares:
         - retry-memberships
 
+    events:
+      rule: "PathPrefix(`/events`)"
+      service: event-service
+      entryPoints:
+        - web
+      middlewares:
+        - retry-event
+
     keycloak:
       rule: "PathPrefix(`/keycloak`)"
       service: keycloak
@@ -291,6 +311,11 @@ http:
       retry:
         attempts: 3
         initialInterval: 500ms  
+
+    retry-event:
+      retry:
+        attempts: 3
+        initialInterval: 500ms
 
     retry-memberships:
       retry:
