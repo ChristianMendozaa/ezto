@@ -1,58 +1,73 @@
 # app/models/class_model.py
 
 from dataclasses import dataclass, asdict
-from datetime import datetime
-from typing import Optional
+from datetime import time
+from typing import List, Optional
+from enum import Enum
+
+class WeekDay(str, Enum):
+    MONDAY    = "Monday"
+    TUESDAY   = "Tuesday"
+    WEDNESDAY = "Wednesday"
+    THURSDAY  = "Thursday"
+    FRIDAY    = "Friday"
+    SATURDAY  = "Saturday"
+    SUNDAY    = "Sunday"
+
+@dataclass
+class Session:
+    day       : WeekDay
+    start_time: time
+    end_time  : time
+
+    def to_dict(self) -> dict:
+        return {
+            "day": self.day.value,
+            "start_time": self.start_time.isoformat(),
+            "end_time": self.end_time.isoformat(),
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "Session":
+        return cls(
+            day=WeekDay(data["day"]),
+            start_time=time.fromisoformat(data["start_time"]),
+            end_time=time.fromisoformat(data["end_time"])
+        )
 
 @dataclass
 class ClassEntity:
-    id: Optional[str]
-    name: str
+    id         : Optional[str]
+    name       : str
     description: str
-    instructor: str
-    start_time: datetime
-    end_time: datetime
-    capacity: int
-    location: Optional[str]
-    status: bool
-
-    @property
-    def schedule(self) -> str:
-        """Horario de la clase formateado HH:MM – HH:MM."""
-        return f"{self.start_time.strftime('%H:%M')} – {self.end_time.strftime('%H:%M')}"
-
-    @property
-    def day_of_week(self) -> str:
-        """Nombre del día de la semana en que se imparte la clase."""
-        # En inglés; para español podrías usar locale o un mapeo manual
-        return self.start_time.strftime("%A")
+    instructor : str
+    capacity   : int
+    location   : Optional[str]
+    status     : bool
+    sessions   : List[Session]
 
     def to_dict(self) -> dict:
-        """
-        Pasa la entidad a dict listo para JSON:
-        - convierte datetimes a ISO
-        - añade schedule y day_of_week
-        """
-        data = asdict(self)
-        data["start_time"] = self.start_time.isoformat()
-        data["end_time"]   = self.end_time.isoformat()
-        data["schedule"]   = self.schedule
-        data["day_of_week"] = self.day_of_week
-        return data
+        base = {
+            "id": self.id,
+            "name": self.name,
+            "description": self.description,
+            "instructor": self.instructor,
+            "capacity": self.capacity,
+            "location": self.location,
+            "status": self.status,
+        }
+        base["sessions"] = [s.to_dict() for s in self.sessions]
+        return base
 
     @classmethod
     def from_dict(cls, data: dict) -> "ClassEntity":
-        """
-        Reconstruye una entidad desde un dict, parseando ISO timestamps.
-        """
         return cls(
             id=data.get("id"),
             name=data["name"],
             description=data["description"],
             instructor=data["instructor"],
-            start_time=datetime.fromisoformat(data["start_time"]),
-            end_time=datetime.fromisoformat(data["end_time"]),
             capacity=int(data["capacity"]),
             location=data.get("location"),
-            status=bool(data["status"])
+            status=bool(data["status"]),
+            sessions=[Session.from_dict(s) for s in data["sessions"]]
         )

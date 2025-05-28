@@ -1,73 +1,72 @@
 # app/models/dtos/class_dto.py
 
-from pydantic import BaseModel, ConfigDict, Field, constr, conint, field_validator, model_validator
-from typing import Optional
-from datetime import datetime
+from pydantic import (
+    BaseModel,
+    Field,
+    constr,
+    conint,
+    field_validator,
+    ConfigDict
+)
+from typing import List, Optional
+from datetime import time
+from enum import Enum
+
+class WeekDay(str, Enum):
+    MONDAY    = "Monday"
+    TUESDAY   = "Tuesday"
+    WEDNESDAY = "Wednesday"
+    THURSDAY  = "Thursday"
+    FRIDAY    = "Friday"
+    SATURDAY  = "Saturday"
+    SUNDAY    = "Sunday"
+
+class SessionDTO(BaseModel):
+    day       : WeekDay = Field(..., description="Día de la semana")
+    start_time: time    = Field(..., description="Hora de inicio (HH:MM:SS)")
+    end_time  : time    = Field(..., description="Hora de fin (HH:MM:SS)")
+
+    @field_validator("end_time")
+    def check_end_after_start(cls, end_time, info):
+        if (start := info.data.get("start_time")) and end_time <= start:
+            raise ValueError("end_time debe ser posterior a start_time")
+        return end_time
 
 class ClassDTO(BaseModel):
     model_config = ConfigDict(
-        json_schema_extra={
-            "example": {
-                "id": "jFLRYzgPBHJoKhlTZNOV",
-                "name": "Yoga Avanzado",
-                "description": "Clase de yoga para practicantes avanzados",
-                "instructor": "Ana López",
-                "start_time": "2025-06-01T09:00:00",
-                "end_time": "2025-06-01T10:30:00",
-                "capacity": 20,
-                "location": "Sala 1",
-                "status": True,
-                "schedule": "09:00 – 10:30",
-                "day_of_week": "Sunday"
-            }
-        }
+        json_schema_extra={"example": {
+            "id": "abc123",
+            "name": "Yoga Avanzado",
+            "description": "Clase de yoga avanzadas",
+            "instructor": "Ana López",
+            "capacity": 20,
+            "location": "Sala 1",
+            "status": True,
+            "sessions": [
+                {"day":"Thursday", "start_time":"11:30:00", "end_time":"12:00:00"},
+                {"day":"Friday",   "start_time":"09:00:00", "end_time":"10:00:00"}
+            ]
+        }}
     )
 
-    id: Optional[str] = Field(None, description="ID único de la clase")
-    name: constr(min_length=3, max_length=100) = Field(..., description="Nombre de la clase")
-    description: constr(min_length=10, max_length=500) = Field(..., description="Descripción de la clase")
-    instructor: constr(min_length=3, max_length=50) = Field(..., description="Nombre del instructor")
-    start_time: datetime = Field(..., description="Fecha y hora de inicio")
-    end_time: datetime = Field(..., description="Fecha y hora de finalización")
-    capacity: conint(gt=0) = Field(..., description="Cupos disponibles en la clase")
-    location: Optional[constr(min_length=3, max_length=50)] = Field(None, description="Ubicación física de la clase")
-    status: bool = Field(True, description="Estado activo o inactivo")
-
-    # --- campos computados ---
-    schedule: Optional[str] = Field(None, description="Horario formateado HH:MM – HH:MM")
-    day_of_week: Optional[str] = Field(None, description="Día de la semana en que se imparte la clase")
-
-    @field_validator("end_time")
-    def check_end_after_start(cls, end_time: datetime, info) -> datetime:
-        """
-        Asegura que end_time sea posterior a start_time.
-        """
-        if start := info.data.get("start_time"):
-            if end_time <= start:
-                raise ValueError("La hora de fin debe ser posterior a la hora de inicio.")
-        return end_time
-
-    @model_validator(mode="after")
-    def compute_computed_fields(cls, model: "ClassDTO") -> "ClassDTO":
-        """
-        Tras validar todos los campos, rellenamos `schedule` y `day_of_week`.
-        """
-        # formatear horas
-        model.schedule = f"{model.start_time.strftime('%H:%M')} – {model.end_time.strftime('%H:%M')}"
-        # día de la semana en inglés; usa locale si quieres otro idioma
-        model.day_of_week = model.start_time.strftime("%A")
-        return model
+    id         : Optional[str]     = Field(None, description="ID único")
+    name       : constr(min_length=3, max_length=100)
+    description: constr(min_length=10, max_length=500)
+    instructor : constr(min_length=0, max_length=50)
+    capacity   : conint(gt=0)
+    location: Optional[constr(min_length=0, max_length=50)] = Field(None)
+    status     : bool               = Field(True, description="Activa/inactiva")
+    sessions   : List[SessionDTO]   = Field(..., description="Lista de sesiones semanales")
 
     def to_entity(self, entity_id: Optional[str] = None) -> "ClassEntity":
-        from app.models.class_model import ClassEntity
+        from app.models.class_model import ClassEntity, Session
         return ClassEntity(
             id=self.id or entity_id,
             name=self.name,
             description=self.description,
             instructor=self.instructor,
-            start_time=self.start_time,
-            end_time=self.end_time,
             capacity=self.capacity,
             location=self.location,
-            status=self.status
+            status=self.status,
+            sessions=[Session(**s.model_dump()) for s in self.sessions]
         )

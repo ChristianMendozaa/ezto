@@ -3,7 +3,7 @@ from app.models.class_model import ClassEntity
 from app.utils.firebase_config import db
 import asyncio
 import logging
-from datetime import datetime
+from datetime import time
 logger = logging.getLogger(__name__)
 
 class ClassRepository:
@@ -99,31 +99,44 @@ class ClassRepository:
         try:
             loop = asyncio.get_running_loop()
             ref = db.collection(ClassRepository.COLLECTION_NAME).document(class_id)
+
+            # 1) Fetch existente
             doc = await loop.run_in_executor(None, lambda: ref.get())
             if not doc.exists:
                 return {"status": "error", "message": "Clase no encontrada"}
 
-            current_data = doc.to_dict()
+            # 2) Filtrar solo campos permitidos
+            allowed = {"name", "description", "instructor", "capacity", "location", "status", "sessions"}
+            to_apply = {k: v for k, v in updates.items() if k in allowed}
 
-            # Validación de fechas
-            start_time = updates.get("start_time", current_data["start_time"])
-            end_time = updates.get("end_time", current_data["end_time"])
+            # 3) Si vienen 'sessions', validarlas
+            if "sessions" in to_apply:
+                raw = to_apply["sessions"]
+                validated = []
+                for sess in raw:
+                    # Parsear y validar tiempos
+                    st = time.fromisoformat(sess["start_time"])
+                    et = time.fromisoformat(sess["end_time"])
+                    if et <= st:
+                        return {
+                            "status": "error",
+                            "message": f"En sesión {sess['day']}: end_time debe ser posterior a start_time"
+                        }
+                    validated.append({
+                        "day": sess["day"],
+                        "start_time": sess["start_time"],
+                        "end_time": sess["end_time"]
+                    })
+                to_apply["sessions"] = validated
 
-            start_time_dt = firestore.SERVER_TIMESTAMP if start_time == firestore.SERVER_TIMESTAMP else datetime.fromisoformat(start_time)
-            end_time_dt = firestore.SERVER_TIMESTAMP if end_time == firestore.SERVER_TIMESTAMP else datetime.fromisoformat(end_time)
+            # 4) Aplicar el update en Firestore
+            await loop.run_in_executor(None, lambda: ref.update(to_apply))
 
-            if end_time_dt <= start_time_dt:
-                return {
-                    "status": "error",
-                    "message": "La hora de fin debe ser posterior a la hora de inicio"
-                }
-
-            await loop.run_in_executor(None, lambda: ref.update(updates))
-
-            updated_doc = await loop.run_in_executor(None, lambda: ref.get())
+            # 5) Leer documento actualizado y devolverlo
+            updated = await loop.run_in_executor(None, lambda: ref.get())
             return {
                 "status": "success",
-                "data": updated_doc.to_dict()
+                "data": updated.to_dict()
             }
 
         except Exception as e:
