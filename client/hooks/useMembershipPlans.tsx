@@ -93,7 +93,38 @@ export function useMembershipPlans() {
     },
     [keycloak]
   );
+  const updatePlan = useCallback(
+    async (id: string, data: MembershipPlanInput) => {
+      if (!keycloak?.authenticated) {
+        setError("No estás autenticado");
+        return false;
+      }
 
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch(`${API_BASE_URL}/memberships-plans/update/${id}`, {
+          method: "PATCH",
+          headers: authHeaders(),
+          body: JSON.stringify(data),
+        });
+        if (!res.ok) {
+          const details = await res.json().catch(() => ({}));
+          throw new Error(details?.detail?.message || "No se pudo actualizar el plan.");
+        }
+        const payload = await res.json();
+        const updated: MembershipPlan = payload.data ?? payload;
+        setPlans((prev) => prev.map((p) => (p.id === id ? updated : p)));
+        return true;
+      } catch (err: any) {
+        setError(err.message);
+        return false;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [keycloak]
+  );
   const deletePlan = useCallback(
     async (id: string) => {
       if (!keycloak?.authenticated) {
@@ -135,6 +166,7 @@ export function useMembershipPlans() {
     loading,
     error,
     createPlan,
+    updatePlan,
     deletePlan,
     refetch: fetchPlans,
   };
