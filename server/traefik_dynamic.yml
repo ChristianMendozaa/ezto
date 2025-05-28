@@ -181,12 +181,13 @@ http:
           expression: "NetworkErrorRatio() > 0.5"
 
   routers:
-   
     config-api:
       rule: "PathPrefix(`/config`)"
       service: config-server
       entryPoints:
         - web
+      middlewares:
+        - config-strip
 
     auth:
       rule: "PathPrefix(`/auth`)"
@@ -194,6 +195,7 @@ http:
       entryPoints:
         - web
       middlewares:
+        - strip-auth
         - retry-auth
 
     inventory:
@@ -202,6 +204,7 @@ http:
       entryPoints:
         - web
       middlewares:
+        - inventory-strip
         - retry-auth
 
     purchase:
@@ -210,6 +213,7 @@ http:
       entryPoints:
         - web
       middlewares:
+        - purchase-strip
         - retry-auth
 
     shop:
@@ -218,6 +222,7 @@ http:
       entryPoints:
         - web
       middlewares:
+        - shop-strip
         - retry-auth
 
     supplier:
@@ -226,6 +231,7 @@ http:
       entryPoints:
         - web
       middlewares:
+        - supplier-strip
         - retry-auth
 
     promotions:
@@ -234,14 +240,16 @@ http:
       entryPoints:
         - web
       middlewares:
+        - promotions-strip
         - retry-promotions
 
     usermemberships:
       rule: "PathPrefix(`/usermemberships`)"
-      service: usermembership-service
+      service: usermemberships-service
       entryPoints:
         - web
       middlewares:
+        - usermemberships-strip
         - retry-usermembership
 
     reservations:
@@ -250,15 +258,16 @@ http:
       entryPoints:
         - web
       middlewares:
+        - reservations-strip
         - retry-reservations
-        
-    
+
     classes:
       rule: "PathPrefix(`/classes`)"
       service: class-service
       entryPoints:
         - web
       middlewares:
+        - classes-strip
         - retry-class
 
     classes:
@@ -301,6 +310,9 @@ http:
       middlewares:
         - retry-auth
 
+  services:
+    # Se definen en base a etiquetas de los contenedores (no es necesario repetirlos aquí)
+
   middlewares:
     retry-auth:
       retry:
@@ -312,7 +324,7 @@ http:
         attempts: 3
         initialInterval: 500ms
 
-    retry-usermemberships:
+    retry-usermembership:
       retry:
         attempts: 3
         initialInterval: 500ms
@@ -326,18 +338,55 @@ http:
       retry:
         attempts: 3
         initialInterval: 500ms
-    
-    retry-reservations:
-      retry:
-        attempts: 3
-        initialInterval: 500ms  
 
-    retry-event:
+    retry-reservations:
       retry:
         attempts: 3
         initialInterval: 500ms
 
-    retry-memberships:
-      retry:
-        attempts: 3
-        initialInterval: 500ms  
+    config-strip:
+      stripPrefix:
+        prefixes:
+          - /config
+
+    strip-auth:
+      stripPrefix:
+        prefixes:
+          - /auth
+
+    shop-strip:
+      stripPrefix:
+        prefixes:
+          - /shop
+    inventory-strip:
+      stripPrefix:
+        prefixes:
+          - /inventory
+    purchase-strip: 
+      stripPrefix:
+        prefixes:
+          - /purchase
+    supplier-strip:
+      stripPrefix:
+        prefixes:
+          - /supplier
+
+    promotions-strip:
+      stripPrefix:
+        prefixes:
+          - /promotions
+
+    usermemberships-strip:
+      stripPrefix:
+        prefixes:
+          - /usermemberships
+
+    reservations-strip:
+      stripPrefix:
+        prefixes:
+          - /reservations
+
+    classes-strip:
+      stripPrefix:
+        prefixes:
+          - /classes

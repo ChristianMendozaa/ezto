@@ -45,6 +45,8 @@ async def update_member(member_id: str, updates: Dict[str, Any] = Body(...), use
     """
     Actualiza un miembro por su ID.
     """
+    if "id" in updates:
+        updates.pop("id")  # ✅ Eliminar 'id' duplicado si viene en el body
     logger.debug(f"Recibida petición PATCH /members/update/{member_id} con cambios: {updates}")
     response = await MemberService.update_member(member_id, updates)
     if response.status == "error":

@@ -56,7 +56,7 @@ app.add_middleware(
 )
 
 # Middleware de Rate Limiting
-app.add_middleware(RateLimitMiddleware)
+#app.add_middleware(RateLimitMiddleware)
 
 # Middleware de GZIP para comprimir respuestas (mínimo 1KB)
 app.add_middleware(GZipMiddleware, minimum_size=1000)

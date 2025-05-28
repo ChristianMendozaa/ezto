@@ -10,6 +10,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from app.controllers.product_controller import router as product_router
 from app.utils.service_registry import register_service, deregister_service
+from fastapi.middleware.cors import CORSMiddleware
 
 # --- logging & config ---
 logging.basicConfig(level=logging.INFO)
@@ -25,9 +26,18 @@ app = FastAPI(
   title="Productos Service",
   description="Microservicio para gestión de productos",
   version="1.0.0",
-  openapi_tags=[{"name":"Productos"}]
+  openapi_tags=[{"name":"Productos"}],
+  redirect_slashes=False  # ❗ Desactiva la redirección automática de `/products` -> `/products/`
 )
 
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:4000"],  # O especifica ["http://localhost:4000"] si prefieres restringir
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 # --- middlewares ---
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 app.add_middleware(GZipMiddleware, minimum_size=1000)
@@ -50,6 +60,9 @@ app.include_router(product_router, prefix="/products", tags=["Productos"])
 @app.get("/health", tags=["Monitoreo"])
 async def health_check():
     return {"status":"ok","service":SERVICE_NAME}
+@app.get("/")
+def root():
+    return {"message": "shop-service is running"}
 
 # --- Consul ---
 @app.on_event("startup")

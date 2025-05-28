@@ -42,7 +42,17 @@ app = FastAPI(
     title="Supplier Service",
     description="Microservicio para gestión de proveedores",
     version="1.0.0",
-    openapi_tags=[{"name": "Proveedores"}]
+    openapi_tags=[{"name": "Proveedores"}],
+    redirect_slashes=False  # ❗ Desactiva la redirección automática de `/products` -> `/products/`
+)
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:4000"],  # O especifica ["http://localhost:4000"] si prefieres restringir
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # --- Middlewares ---
