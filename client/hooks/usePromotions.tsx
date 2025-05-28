@@ -99,7 +99,42 @@ export function usePromotions() {
     },
     [keycloak]
   );
+  const updatePromotion = useCallback(
+    async (id: string, data: PromotionInput) => {
+      if (!keycloak?.authenticated) {
+        setError("No estás autenticado");
+        return false;
+      }
 
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch(`${API_BASE_URL}/promotions/update/${id}`, {
+          method: "PATCH",
+          headers: authHeaders(),
+          body: JSON.stringify(data),
+        });
+
+        if (!res.ok) {
+          const details = await res.json().catch(() => ({}));
+          throw new Error(details?.detail?.message || "No se pudo actualizar la promoción.");
+        }
+
+        const payload = await res.json();
+        const updated: Promotion = payload.data ?? payload;
+        setPromotions((prev) =>
+          prev.map((p) => (p.id === id ? updated : p))
+        );
+        return true;
+      } catch (err: any) {
+        setError(err.message);
+        return false;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [keycloak]
+  );
   const deletePromotion = useCallback(
     async (id: string) => {
       if (!keycloak?.authenticated) {
@@ -142,6 +177,7 @@ export function usePromotions() {
     loading,
     error,
     createPromotion,
+    updatePromotion,
     deletePromotion,
     refetch: fetchPromotions,
   };

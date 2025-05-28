@@ -26,7 +26,7 @@ class PromotionDTO(BaseModel):
     discount_value: conint(gt=0) = Field(..., description="Valor del descuento, debe ser mayor a 0")
     applicable_to: ApplicableTo = Field(..., description="A quién aplica la promoción")
     auto_apply: bool = Field(..., description="Indica si la promoción se aplica automáticamente")
-    promo_code: Optional[constr(min_length=3, max_length=20)] = Field(None, description="Código de promoción opcional")
+    promo_code: Optional[constr(min_length=0, max_length=20)] = Field(None, description="Código de promoción opcional")
     status: bool = Field(..., description="Estado de la promoción")
 
     class Config:
