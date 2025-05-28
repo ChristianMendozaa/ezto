@@ -5,238 +5,117 @@ import React, { useState, useEffect } from "react";
 import { useLanguage } from "@/lib/hooks/use-language";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useAuthHeaders } from "@/hooks/use-auth-header";
 
-// Products
-import { ProductFormData, ProductForm } from "./components/ProductForm";
-import { ProductTable } from "./components/ProductTable";
+// Productos
+import { ProductFormData, ProductForm } from "./products/ProductForm";
+import { ProductTable } from "./products/ProductTable";
 import { Product, useProducts } from "./hooks/useProducts";
 
-// Purchases
-
-import { PurchaseForm, PurchaseFormData } from "./components/PurchaseForm";
-import { PurchaseTable } from "./components/PurchaseTable";
+// Compras
+import { PurchaseForm, PurchaseFormData } from "./purchase/PurchaseForm";
+import { PurchaseTable } from "./purchase/PurchaseTable";
 import { usePurchases } from "./hooks/usePurchases";
 
-// Inventory
-import { InventoryForm } from "./components/InventoryForm";
-import { InventoryTable } from "./components/InventoryTable";
+// Inventario
+import { InventoryForm } from "./inventory/InventoryForm";
+import { InventoryTable } from "./inventory/InventoryTable";
 import { useInventory } from "./hooks/useInventory";
 
-// Suppliers
-
+// Proveedores
+import { SupplierForm, SupplierFormData } from "./suppliers/SupplierForms";
+import { SupplierTable } from "./suppliers/SupplierTable";
 import { useSuppliers } from "./hooks/useSuppliers";
-import { SupplierForm, SupplierFormData } from "./components/SupplierForms";
-import { SupplierTable } from "./components/SupplierTable";
 
 export default function StorePage() {
   const { t } = useLanguage();
-  const [activeTab, setActiveTab] = useState<
-    "catalog" | "purchases" | "inventory" | "suppliers"
-  >("catalog");
+  const [activeTab, setActiveTab] = useState<"catalog" | "purchases" | "inventory" | "suppliers">("catalog");
 
-  // Auth headers
-  const rawAuth = useAuthHeaders();
-  const authHeader: HeadersInit = rawAuth?.Authorization
-    ? { Authorization: rawAuth.Authorization }
-    : {};
+  // PRODUCTS
+  const {
+    products,
+    loading: prodLoading,
+    createProduct,
+    updateProduct,
+    deleteProduct
+  } = useProducts();
 
-  // Products
-  const { products, fetchProducts, updateProduct, deleteProduct } = useProducts();
-  const [editingProduct, setEditingProduct] = useState<
-    ProductFormData & { id: string }
-  >();
+  const [isProdFormOpen, setIsProdFormOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | undefined>(undefined);
 
-  // Purchases
-  const { purchases, fetchPurchases } = usePurchases();
-  const [editingPurchase, setEditingPurchase] = useState<
-    PurchaseFormData & { sale_id: string }
-  >();
-
-  // Inventory
-  const { movements, loading: invLoading, fetchInventory, addMovement } = useInventory();
-
-  // Suppliers
-  const { suppliers, fetchSuppliers} = useSuppliers();
-  const [editingSupplier, setEditingSupplier] = useState<
-    SupplierFormData & { id: string }
-  >();
-
-  // Load all on mount
-  useEffect(() => {
-    fetchProducts();
-    fetchPurchases();
-    fetchInventory();
-    fetchSuppliers();
-  }, []);
-
-  // Handlers Products
-  const handleAddProduct = async (data: ProductFormData, image: File | null) => {
-    const form = new FormData();
-    Object.entries(data).forEach(([k, v]) => form.append(k, v));
-    if (image) form.append("product_image", image);
-    try {
-      const res = await fetch("http://localhost/shop/products/", {
-        method: "POST",
-        headers: authHeader,
-        body: form,
-      });
-      if (!res.ok) throw new Error(await res.text());
-      fetchProducts();
-    } catch (err) {
-      console.error("Error creating product:", err);
+  const onProdSave = async (data: ProductFormData, image: File | null) => {
+    if (editingProduct) {
+      await updateProduct(editingProduct.id, data, image);
+    } else {
+      await createProduct(data, image);
     }
+    setEditingProduct(undefined);
+    setIsProdFormOpen(false);
   };
 
-  const handleEditProduct = (product: Product) => {
-    // Convert Product to ProductFormData & { id: string }
-    const {
-      id,
-      name,
-      description,
-      purchase_price,
-      sale_price,
-      current_stock,
-      min_stock,
-      expiration_date,
-      ...rest
-    } = product;
-    setEditingProduct({
-      id,
-      name,
-      description: description ?? "",
-      purchase_price: purchase_price.toString(),
-      sale_price: sale_price.toString(),
-      current_stock: current_stock?.toString?.() ?? "",
-      min_stock: min_stock?.toString?.() ?? "",
-      expiration_date: expiration_date ?? "",
-      barcode: product.barcode ?? "",
-      ...rest
-    });
+  const onProdEdit = (prod: Product) => {
+    setEditingProduct(prod);
+    setIsProdFormOpen(true);
   };
 
-  const handleUpdateProduct = async (
-    data: ProductFormData,
-    image: File | null,
-    id?: string
-  ) => {
-    if (!id) return;
-    const form = new FormData();
-    Object.entries(data).forEach(([k, v]) => form.append(k, v));
-    if (image) form.append("product_image", image);
-    try {
-      const res = await fetch(`http://localhost/shop/products/${id}`, {
-        method: "PUT",
-        headers: authHeader,
-        body: form,
-      });
-      if (!res.ok) throw new Error(await res.text());
-      setEditingProduct(undefined);
-      fetchProducts();
-    } catch (err) {
-      console.error("Error updating product:", err);
-    }
-  };
-
-  const handleDeleteProduct = async (id: string) => {
-    if (!confirm(t("store.catalog.deleteConfirm"))) return;
-    try {
+  const onProdDelete = async (id: string) => {
+    if (confirm(t("store.catalog.deleteConfirm"))) {
       await deleteProduct(id);
-    } catch {}
-  };
-
-  // Handlers Purchases
-  const handleAddPurchase = async (data: PurchaseFormData) => {
-    try {
-      const res = await fetch("http://localhost/purchases/", {
-        method: "POST",
-        headers: { ...authHeader, "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) throw new Error(await res.text());
-      fetchPurchases();
-    } catch (err) {
-      console.error("Error adding purchase:", err);
     }
   };
 
-  const handleEditPurchase = (p: PurchaseFormData & { sale_id: string }) => {
+  // PURCHASES
+  const {
+    purchases,
+    loading: purLoading,
+    createPurchase,
+    updatePurchase,
+    deletePurchase
+  } = usePurchases();
+
+  const [editingPurchase, setEditingPurchase] = useState<PurchaseFormData & { sale_id: string } | undefined>(undefined);
+
+  const onPurSave = async (data: PurchaseFormData) => {
+    if (editingPurchase) {
+      await updatePurchase(editingPurchase.sale_id, data);
+    } else {
+      await createPurchase(data);
+    }
+    setEditingPurchase(undefined);
+  };
+
+  const onPurEdit = (p: PurchaseFormData & { sale_id: string }) => {
     setEditingPurchase(p);
   };
 
-  const handleUpdatePurchase = async (
-    data: PurchaseFormData,
-    sale_id?: string
-  ) => {
-    if (!sale_id) return;
-    try {
-      const res = await fetch(`http://localhost/purchases/${sale_id}`, {
-        method: "PUT",
-        headers: { ...authHeader, "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) throw new Error(await res.text());
-      setEditingPurchase(undefined);
-      fetchPurchases();
-    } catch (err) {
-      console.error("Error updating purchase:", err);
+  // INVENTORY
+  const { movements, loading: invLoading, addMovement } = useInventory();
+
+  // SUPPLIERS
+  const {
+    suppliers,
+    loading: supLoading,
+    createSupplier,
+    updateSupplier,
+    deleteSupplier
+  } = useSuppliers();
+
+  const [editingSupplier, setEditingSupplier] = useState<SupplierFormData & { id: string } | undefined>(undefined);
+
+  const onSupSave = async (data: SupplierFormData) => {
+    if (editingSupplier) {
+      await updateSupplier(editingSupplier.id, data);
+    } else {
+      await createSupplier(data);
     }
+    setEditingSupplier(undefined);
   };
 
-  const handleDeletePurchase = async (sale_id: string) => {
-    if (!confirm(t("store.purchases.deleteConfirm"))) return;
-    try {
-      await deletePurchase(sale_id);
-    } catch {}
-  };
-
-  // Handlers Suppliers
-  const handleAddSupplier = async (data: SupplierFormData) => {
-    try {
-      const res = await fetch("http://localhost/suppliers/", {
-        method: "POST",
-        headers: { ...authHeader, "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) throw new Error(await res.text());
-      fetchSuppliers();
-    } catch (err) {
-      console.error("Error adding supplier:", err);
-    }
-  };
-
-  const handleEditSupplier = (s: SupplierFormData & { id: string }) => {
+  const onSupEdit = (s: SupplierFormData & { id: string }) => {
     setEditingSupplier(s);
   };
 
-  const handleUpdateSupplier = async (
-    data: SupplierFormData,
-    id?: string
-  ) => {
-    if (!id) return;
-    try {
-      const res = await fetch(`http://localhost/suppliers/${id}`, {
-        method: "PUT",
-        headers: { ...authHeader, "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) throw new Error(await res.text());
-      setEditingSupplier(undefined);
-      fetchSuppliers();
-    } catch (err) {
-      console.error("Error updating supplier:", err);
-    }
-  };
-
-  const handleDeleteSupplier = async (id: string) => {
-    if (!confirm(t("store.suppliers.deleteConfirm"))) return;
-    try {
-      await deleteSupplier(id);
-    } catch {}
-  };
-
   return (
-    <div className="p-4">
+    <div className="p-4 space-y-6">
       <Tabs value={activeTab} onValueChange={v => setActiveTab(v as any)}>
         <TabsList>
           <TabsTrigger value="catalog">{t("store.tabs.catalog")}</TabsTrigger>
@@ -245,31 +124,37 @@ export default function StorePage() {
           <TabsTrigger value="suppliers">{t("store.tabs.suppliers")}</TabsTrigger>
         </TabsList>
 
-        {/* Catalog */}
+        {/* CATALOGO */}
         <TabsContent value="catalog" className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle>{t("store.catalog.title")}</CardTitle>
             </CardHeader>
             <CardContent>
-              <ProductForm onSubmit={handleAddProduct} />
-              {editingProduct && (
+              {/* Botón para nuevo */}
+              <div className="flex justify-end mb-2">
                 <ProductForm
+                  open={isProdFormOpen}
+                  onOpenChange={setIsProdFormOpen}
+                  onSubmit={onProdSave}
+                  editMode={Boolean(editingProduct)}
                   defaultValues={editingProduct}
-                  editMode
-                  onSubmit={(d, img) => handleUpdateProduct(d, img, editingProduct.id)}
-                />
-              )}
+                >
+                  { !editingProduct && <span>+ {t("store.catalog.addProduct")}</span> }
+                </ProductForm>
+              </div>
+
+              {/* Tabla */}
               <ProductTable
                 products={products}
-                onEdit={handleEditProduct}
-                onDelete={handleDeleteProduct}
+                onEdit={onProdEdit}
+                onDelete={onProdDelete}
               />
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* Purchases */}
+        {/* COMPRAS */}
         <TabsContent value="purchases" className="space-y-4">
           <Card>
             <CardHeader>
@@ -277,31 +162,20 @@ export default function StorePage() {
             </CardHeader>
             <CardContent>
               <PurchaseForm
-                onSubmit={data =>
-                  handleAddPurchase({
-                    ...data,
-                    total_amount: parseFloat(data.total_amount as any),
-                  } as any)
-                }
+                onSubmit={onPurSave}
+                defaultValues={editingPurchase}
+                editMode={Boolean(editingPurchase)}
               />
-              {editingPurchase && (
-                <PurchaseForm
-                  defaultValues={editingPurchase}
-                  editMode
-                  onSubmit={d => handleUpdatePurchase(
-                    { ...d, total_amount: d.total_amount.toString(), tax_amount: d.tax_amount.toString() },
-                    editingPurchase.sale_id
-                  )}
-                />
-              )}
               <PurchaseTable
                 purchases={purchases}
+                onEdit={onPurEdit}
+                onDelete={deletePurchase}
               />
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* Inventory */}
+        {/* INVENTARIO */}
         <TabsContent value="inventory" className="space-y-4">
           <Card>
             <CardHeader>
@@ -309,31 +183,27 @@ export default function StorePage() {
             </CardHeader>
             <CardContent>
               <InventoryForm onSubmit={addMovement} />
-              {invLoading
-                ? <p>{t("store.inventory.loading")}</p>
-                : <InventoryTable movements={movements} />
-              }
+              <InventoryTable movements={movements} loading={invLoading} />
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* Suppliers */}
+        {/* PROVEEDORES */}
         <TabsContent value="suppliers" className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle>{t("store.suppliers.title")}</CardTitle>
             </CardHeader>
             <CardContent>
-              <SupplierForm onSubmit={handleAddSupplier} />
-              {editingSupplier && (
-                <SupplierForm
-                  defaultValues={editingSupplier}
-                  editMode
-                  onSubmit={d => handleUpdateSupplier(d, editingSupplier.id)}
-                />
-              )}
+              <SupplierForm
+                onSubmit={onSupSave}
+                defaultValues={editingSupplier}
+                editMode={Boolean(editingSupplier)}
+              />
               <SupplierTable
                 suppliers={suppliers}
+                onEdit={onSupEdit}
+                onDelete={deleteSupplier}
               />
             </CardContent>
           </Card>
@@ -342,11 +212,3 @@ export default function StorePage() {
     </div>
   );
 }
-function deletePurchase(sale_id: string) {
-  throw new Error("Function not implemented.");
-}
-
-function deleteSupplier(id: string) {
-  throw new Error("Function not implemented.");
-}
-

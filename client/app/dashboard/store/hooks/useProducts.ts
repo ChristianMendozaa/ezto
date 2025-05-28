@@ -21,72 +21,106 @@ export interface Product {
   profit_margin: number;
 }
 
-const API_URL =  "http://localhost";
+export interface ProductFormData {
+  name: string;
+  sku: string;
+  category: string;
+  description: string;
+  purchase_price: string;
+  sale_price: string;
+  current_stock: string;
+  min_stock: string;
+  expiration_date: string;
+  supplier_id: string;
+  barcode: string;
+  status: string;
+}
 
-export const useProducts = () => {
+const API_BASE = "http://localhost/shop/products";
+
+export function useProducts() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
-  const rawAuthHeader = useAuthHeaders();
-
-  const authHeader: Record<string, string> = rawAuthHeader && typeof rawAuthHeader.Authorization === "string"
-    ? { Authorization: rawAuthHeader.Authorization }
-    : {};
+  const rawAuth = useAuthHeaders();
+  const authHeader: Record<string, string> =
+    rawAuth?.Authorization && typeof rawAuth.Authorization === "string"
+      ? { Authorization: rawAuth.Authorization }
+      : {};
 
   const fetchProducts = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/shop/products/`, {
-        headers: {
-          ...authHeader,
-        },
+      const res = await fetch(`${API_BASE}/`, {
+        headers: authHeader,
       });
-      if (res.ok) {
-        const data = await res.json();
-        setProducts(data);
-      } else {
-        console.error("Error al obtener productos", await res.text());
-      }
-    } catch (error) {
-      console.error("Error fetching products", error);
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
+      setProducts(data);
+    } catch (err) {
+      console.error("Error fetching products:", err);
     } finally {
       setLoading(false);
     }
   };
 
-  const updateProduct = async (productId: string, updateData: Partial<Product>) => {
+  const createProduct = async (data: ProductFormData, imageFile: File | null) => {
+    const form = new FormData();
+    Object.entries(data).forEach(([key, value]) => {
+      form.append(key, value);
+    });
+    if (imageFile) {
+      form.append("product_image", imageFile);
+    }
     try {
-      const formData = new FormData();
-      Object.entries(updateData).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-          formData.append(key, String(value));
-        }
-      });
-      const res = await fetch(`${API_URL}/shop/products/${productId}`, {
-        method: "PUT",
-        headers: {
-          ...authHeader,
-        },
-        body: formData,
+      const res = await fetch(`${API_BASE}/`, {
+        method: "POST",
+        headers: authHeader,
+        body: form,
       });
       if (!res.ok) throw new Error(await res.text());
       await fetchProducts();
-    } catch (error) {
-      console.error("Error al actualizar producto", error);
+    } catch (err) {
+      console.error("Error creating product:", err);
+    }
+  };
+
+  const updateProduct = async (
+    productId: string,
+    data: Partial<ProductFormData>,
+    imageFile: File | null
+  ) => {
+    const form = new FormData();
+    Object.entries(data).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        form.append(key, value);
+      }
+    });
+    if (imageFile) {
+      form.append("product_image", imageFile);
+    }
+    try {
+      const res = await fetch(`${API_BASE}/${productId}`, {
+        method: "PUT",
+        headers: authHeader,
+        body: form,
+      });
+      if (!res.ok) throw new Error(await res.text());
+      await fetchProducts();
+    } catch (err) {
+      console.error("Error updating product:", err);
     }
   };
 
   const deleteProduct = async (productId: string) => {
     try {
-      const res = await fetch(`${API_URL}/shop/products/${productId}`, {
+      const res = await fetch(`${API_BASE}/${productId}`, {
         method: "DELETE",
-        headers: {
-          ...authHeader,
-        },
+        headers: authHeader,
       });
       if (!res.ok) throw new Error(await res.text());
       await fetchProducts();
-    } catch (error) {
-      console.error("Error al eliminar producto", error);
+    } catch (err) {
+      console.error("Error deleting product:", err);
     }
   };
 
@@ -94,5 +128,12 @@ export const useProducts = () => {
     fetchProducts();
   }, []);
 
-  return { products, loading, fetchProducts, updateProduct, deleteProduct };
-};
+  return {
+    products,
+    loading,
+    fetchProducts,
+    createProduct,
+    updateProduct,
+    deleteProduct,
+  };
+}
