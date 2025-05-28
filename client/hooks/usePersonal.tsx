@@ -26,6 +26,7 @@ export function usePersonal() {
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (keycloak?.token) {
       headers["Authorization"] = `Bearer ${keycloak.token}`;
+      console.log("token:", keycloak.token);
     }
     return headers;
   }

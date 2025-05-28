@@ -45,7 +45,7 @@ app = FastAPI(
     },
     openapi_tags=[
         {"name": "Personal", "description": "Endpoints relacionados con la gestión de entrenadores y personal."},
-    ]
+    ],
 )
 
 # CORS: permitir origen del frontend
