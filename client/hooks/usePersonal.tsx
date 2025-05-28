@@ -87,7 +87,37 @@ export function usePersonal() {
     },
     [keycloak]
   );
-
+  const updatePersonal = useCallback(
+    async (id: string, data: PersonalInput) => {
+      if (!keycloak?.authenticated) {
+        setError("No estás autenticado");
+        return false;
+      }
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch(`${API_BASE_URL}/personal/update/${id}`, {
+          method: "PATCH",
+          headers: authHeaders(),
+          body: JSON.stringify(data),
+        });
+        if (!res.ok) {
+          const details = await res.json().catch(() => ({}));
+          throw new Error(details?.detail?.message || "No se pudo actualizar el registro de personal.");
+        }
+        const payload = await res.json();
+        const updated: Personal = payload.data ?? payload;
+        setPersonals(prev => prev.map(item => item.id === id ? updated : item));
+        return true;
+      } catch (err: any) {
+        setError(err.message);
+        return false;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [keycloak]
+  );
   const deletePersonal = useCallback(
     async (id: string) => {
       if (!keycloak?.authenticated) {
@@ -127,6 +157,7 @@ export function usePersonal() {
     error,
     fetchPersonals,
     createPersonal,
+    updatePersonal,
     deletePersonal,
   };
 }
