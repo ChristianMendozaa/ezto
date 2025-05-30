@@ -9,7 +9,7 @@ logger = logging.getLogger("app.services.auth_service")
 
 cfg = fetch_config().get("keycloak", {})
 
-INTERNAL_KEYCLOAK_URL = "http://traefik/keycloak"                   # usado para requests dentro del contenedor
+INTERNAL_KEYCLOAK_URL = "http://traefik/keycloak"                    # usado para requests dentro del contenedor
 EXTERNAL_KEYCLOAK_URL = cfg["url"].rstrip("/")                     # usado para validar "iss"
 REALM = cfg["realm"]
 

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useLanguage } from "@/lib/hooks/use-language"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -29,19 +29,48 @@ import {
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 
-// Mock data for payments
-const payments = [
-  { id: "PAY001", member: "John Doe", amount: "$50.00", date: "2023-07-01", status: "completed" },
-  { id: "PAY002", member: "Jane Smith", amount: "$75.00", date: "2023-07-02", status: "pending" },
-  { id: "PAY003", member: "Alice Johnson", amount: "$100.00", date: "2023-07-03", status: "completed" },
-  { id: "PAY004", member: "Bob Williams", amount: "$60.00", date: "2023-07-04", status: "failed" },
-  { id: "PAY005", member: "Charlie Brown", amount: "$80.00", date: "2023-07-05", status: "completed" },
-]
+interface TransformedPayment {
+  id: string
+  member: string
+  amount: string
+  date: string
+  status: "completed" | "pending" | "failed"
+  category: string
+  productName?: string | null
+  planName?: string | null
+}
 
 export default function PaymentsPage() {
   const { t } = useLanguage()
   const [filter, setFilter] = useState("all")
   const [isAddPaymentOpen, setIsAddPaymentOpen] = useState(false)
+  const [payments, setPayments] = useState<TransformedPayment[]>([])
+
+  useEffect(() => {
+    const fetchPayments = async () => {
+      try {
+        const response = await fetch("https://nfc-ezto.onrender.com/nfc/payments/history")
+        const data = await response.json()
+        const transformedData: TransformedPayment[] = data.map((payment: any, index: number) => {
+          const isProduct = payment.category === "product"
+          return {
+            id: `PAY${String(index + 1).padStart(3, '0')}`,
+            member: payment.name || "N/A",
+            amount: `$${payment.amount.toFixed(2)}`,
+            date: new Date(payment.timestamp).toLocaleDateString(),
+            status: "completed",
+            category: payment.category,
+            productName: isProduct ? payment.product_name : null,
+            planName: !isProduct ? payment.plan_name : null,
+          }
+        })
+        setPayments(transformedData)
+      } catch (error) {
+        console.error("Error fetching payments:", error)
+      }
+    }
+    fetchPayments()
+  }, [])
 
   const filteredPayments = payments.filter((payment) => {
     if (filter === "all") return true
@@ -204,18 +233,9 @@ export default function PaymentsPage() {
                 ))}
               </TableBody>
             </Table>
-            <div className="flex items-center justify-end space-x-2 py-4">
-              <Button variant="outline" size="sm">
-                {t("payments.pagination.prev")}
-              </Button>
-              <Button variant="outline" size="sm">
-                {t("payments.pagination.next")}
-              </Button>
-            </div>
           </CardContent>
         </Card>
       </div>
     </div>
   )
 }
-

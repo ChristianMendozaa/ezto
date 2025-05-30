@@ -15,7 +15,7 @@ http:
     auth-service:
       loadBalancer:
         servers:
-          - url: "http://auth-service:8000"
+          - url: "http://auth-service:${CONFIG_SERVER_PORT}""
         healthCheck:
           path: "/health"
           interval: "5s"

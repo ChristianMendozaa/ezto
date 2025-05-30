@@ -10,9 +10,11 @@ import { Button } from "@/components/ui/button"
 import { useLanguage } from "@/lib/hooks/use-language"
 import { Analytics } from "@/components/analytics"
 import { Reports } from "@/components/reports"
+import { useDashboardData } from "@/hooks/use-realtime-dashboard"
 
 export default function DashboardPage() {
   const { t } = useLanguage()
+  const { stats, overview, accesses } = useDashboardData()
 
   return (
     <div className="space-y-4">
@@ -40,8 +42,7 @@ export default function DashboardPage() {
                 <Users className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">245</div>
-                <p className="text-xs text-muted-foreground">+4% {t("dashboard.since.lastMonth")}</p>
+                <div className="text-2xl font-bold">{stats.activeMembers}</div>
               </CardContent>
             </Card>
             <Card>
@@ -50,8 +51,7 @@ export default function DashboardPage() {
                 <DollarSign className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">$15,231.89</div>
-                <p className="text-xs text-muted-foreground">+20.1% {t("dashboard.since.lastMonth")}</p>
+                <div className="text-2xl font-bold">Bs. {stats.monthlyRevenue.toFixed(2)}</div>
               </CardContent>
             </Card>
             <Card>
@@ -60,8 +60,7 @@ export default function DashboardPage() {
                 <CreditCard className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">12</div>
-                <p className="text-xs text-muted-foreground">-2 {t("dashboard.since.yesterday")}</p>
+                <div className="text-2xl font-bold">0</div>
               </CardContent>
             </Card>
             <Card>
@@ -70,8 +69,7 @@ export default function DashboardPage() {
                 <Activity className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">142</div>
-                <p className="text-xs text-muted-foreground">+12% {t("dashboard.since.yesterday")}</p>
+                <div className="text-2xl font-bold">{stats.dailyActivity}</div>
               </CardContent>
             </Card>
           </div>
@@ -81,7 +79,7 @@ export default function DashboardPage() {
                 <CardTitle>{t("dashboard.overview")}</CardTitle>
               </CardHeader>
               <CardContent className="pl-2">
-                <Overview />
+                <Overview overviewData={overview} />
               </CardContent>
             </Card>
             <Card className="col-span-3">
@@ -89,7 +87,7 @@ export default function DashboardPage() {
                 <CardTitle>{t("dashboard.recentAccess")}</CardTitle>
               </CardHeader>
               <CardContent>
-                <RecentSales />
+                <RecentSales accesses={accesses} />
               </CardContent>
             </Card>
           </div>
@@ -104,4 +102,3 @@ export default function DashboardPage() {
     </div>
   )
 }
-

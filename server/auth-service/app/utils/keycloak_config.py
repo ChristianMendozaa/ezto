@@ -14,7 +14,7 @@ def _strip_and_decrypt(field_name: str) -> str:
     return raw
 
 # 2) Extrae y desencripta los valores cifrados
-server_url = cfg["url"].rstrip("/")
+server_url = "http://traefik/keycloak"
 realm         = cfg["realm"]
 client_id     = cfg["client_id"]
 client_secret = _strip_and_decrypt("client_secret")

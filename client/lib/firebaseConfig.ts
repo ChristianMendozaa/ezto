@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import { getFirestore } from "firebase/firestore"
 
 // Configuración de Firebase con variables de entorno
 const firebaseConfig = {
@@ -13,6 +13,6 @@ const firebaseConfig = {
 
 // Inicializar Firebase (evitar reinicialización en modo estricto)
 const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
+const db = getFirestore(app)
 
-export { auth };
+export { db };

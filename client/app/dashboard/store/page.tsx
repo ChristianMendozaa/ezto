@@ -119,7 +119,7 @@ export default function StorePage() {
       <Tabs value={activeTab} onValueChange={v => setActiveTab(v as any)}>
         <TabsList>
           <TabsTrigger value="catalog">{t("store.tabs.catalog")}</TabsTrigger>
-          <TabsTrigger value="purchases">{t("store.tabs.purchases")}</TabsTrigger>
+          {/*<TabsTrigger value="purchases">{t("store.tabs.purchases")}</TabsTrigger>*/}
           <TabsTrigger value="inventory">{t("store.tabs.inventory")}</TabsTrigger>
           <TabsTrigger value="suppliers">{t("store.tabs.suppliers")}</TabsTrigger>
         </TabsList>

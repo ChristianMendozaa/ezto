@@ -330,7 +330,7 @@ export const translations = {
       title: "Choose the Right Plan for Your Gym",
       basic: {
         name: "Basic",
-        price: "$49/month",
+        price: "$20/month",
         description: "Perfect for small gyms just starting out",
         feature1: "Up to 100 members",
         feature2: "Basic analytics",
@@ -338,7 +338,7 @@ export const translations = {
       },
       pro: {
         name: "Pro",
-        price: "$99/month",
+        price: "$50/month",
         description: "Ideal for growing gyms with advanced needs",
         feature1: "Up to 500 members",
         feature2: "Advanced analytics",
@@ -727,6 +727,12 @@ export const translations = {
     },
   },
   es: {
+    days: {
+      thursday: "Jueves",
+      friday: "Viernes",
+      saturday: "Sabado",
+      tuesday: "Martes"
+    },
     common: {
       search: "Buscar...",
       signIn: "Iniciar Sesión",
@@ -939,6 +945,7 @@ export const translations = {
       },
     },
     classes: {
+      list: "Lista",
       title: "Clases",
       search: "Buscar clases...",
       add: "Agregar Clase",
@@ -1057,7 +1064,7 @@ export const translations = {
       title: "Elige el Plan Adecuado para tu Gimnasio",
       basic: {
         name: "Básico",
-        price: "49€/mes",
+        price: "150 Bs./mes",
         description: "Perfecto para gimnasios pequeños que están comenzando",
         feature1: "Hasta 100 miembros",
         feature2: "Análisis básicos",
@@ -1065,7 +1072,7 @@ export const translations = {
       },
       pro: {
         name: "Pro",
-        price: "99€/mes",
+        price: "350 Bs./mes",
         description: "Ideal para gimnasios en crecimiento con necesidades avanzadas",
         feature1: "Hasta 500 miembros",
         feature2: "Análisis avanzados",
@@ -1148,6 +1155,12 @@ export const translations = {
         endDate: "Fecha de Finalización",
         status: "Estado",
         actions: "Acciones",
+        discountType: "Tipo de descuento",
+        discountValue: "Valor",
+        applicableTo: "Aplicable a",
+        autoApply: "Auto aplicado",
+        promoCode: "Codigo de promocion",
+
       },
       status: {
         active: "Activa",
@@ -1256,6 +1269,7 @@ export const translations = {
         catalog: "Catálogo de Productos",
         purchases: "Historial de Compras",
         inventory: "Gestión de Inventario",
+        suppliers: "Proveedores",
       },
       catalog: {
         title: "Catálogo de Productos",
@@ -1303,6 +1317,12 @@ export const translations = {
           total: "Total",
           date: "Fecha",
           actions: "Acciones",
+          invoice: "Factura",
+          clientId: "ID de cliente",
+          status: "Estado",
+        },
+        form: {
+          add: "Añadir"
         },
         actions: {
           open: "Abrir menú",
@@ -1320,6 +1340,16 @@ export const translations = {
           inStock: "En Existencia",
           reorderLevel: "Nivel de Reorden",
           actions: "Acciones",
+          productId: "ID de producto",
+          type: "Tipo",
+          qty: "Cantidad",
+          reason: "Razon",
+          reference: "Referencia",
+          date: "Fecha",
+          responsible: "Responsable",
+        },
+        form: {
+          add: "Añadir"
         },
         lowStock: "Bajo Stock",
         adequate: "Adecuado",
@@ -1329,8 +1359,25 @@ export const translations = {
           updateStock: "Actualizar existencias",
           editProduct: "Editar producto",
         },
+        movement: {
+          entrada: "entrada"
+        }
       },
+      suppliers: {
+        form: {
+          add: "Añadir"
+        },
+        table: {
+          name: "Nombre",
+          email: "Correo",
+          phone: "Telefono",
+          address: "Direccion",
+          status: "Estado",
+          productsOffered: "Productos ofrecidos"
+        }
+      }
     },
+
     staff: {
       title: "Entrenadores y Personal",
       search: "Buscar personal...",
@@ -1414,6 +1461,7 @@ export const translations = {
         add: "Agregar Membresía",
         addMembership: "Agregar Nueva Membresía",
         addMembershipDescription: "Ingrese los detalles del nuevo plan de membresía.",
+        search: "Buscar...",
         table: {
           name: "Nombre",
           price: "Precio",

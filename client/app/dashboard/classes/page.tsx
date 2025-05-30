@@ -72,9 +72,9 @@ export default function ClassesPage() {
               <TableRow>
                 <TableHead>{t("classes.table.name")}</TableHead>
                 <TableHead>{t("classes.table.instructor")}</TableHead>
-                <TableHead>{t("classes.table.sessions")}</TableHead>
+                <TableHead>Sesiones</TableHead> {/* {t("classes.table.sessions")}  esto es temporal jhuly no me vayas pegar  */} 
                 <TableHead>{t("classes.table.capacity")}</TableHead>
-                <TableHead>{t("classes.table.location")}</TableHead>
+                <TableHead>Sala</TableHead> {/* {t("classes.table.location")} */}
                 <TableHead>{t("classes.table.status")}</TableHead>
                 <TableHead className="text-right">{t("classes.table.actions")}</TableHead>
               </TableRow>

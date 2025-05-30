@@ -1,49 +1,46 @@
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { format } from "date-fns"
+import { AccessData } from "@/hooks/use-realtime-dashboard"
 
-export function RecentSales() {
+interface Props {
+  accesses: AccessData[]
+}
+
+export function RecentSales({ accesses }: Props) {
   return (
     <div className="space-y-8">
-      <div className="flex items-center">
-        <Avatar className="h-9 w-9">
-          <AvatarFallback>JD</AvatarFallback>
-        </Avatar>
-        <div className="ml-4 space-y-1">
-          <p className="text-sm font-medium leading-none">Juan Díaz</p>
-          <p className="text-sm text-muted-foreground">Acceso: 09:45 AM</p>
-        </div>
-        <div className="ml-auto font-medium">Sala Principal</div>
-      </div>
-      <div className="flex items-center">
-        <Avatar className="h-9 w-9">
-          <AvatarFallback>MR</AvatarFallback>
-        </Avatar>
-        <div className="ml-4 space-y-1">
-          <p className="text-sm font-medium leading-none">María Rodríguez</p>
-          <p className="text-sm text-muted-foreground">Acceso: 09:30 AM</p>
-        </div>
-        <div className="ml-auto font-medium">Área Cardio</div>
-      </div>
-      <div className="flex items-center">
-        <Avatar className="h-9 w-9">
-          <AvatarFallback>CL</AvatarFallback>
-        </Avatar>
-        <div className="ml-4 space-y-1">
-          <p className="text-sm font-medium leading-none">Carlos López</p>
-          <p className="text-sm text-muted-foreground">Acceso: 09:15 AM</p>
-        </div>
-        <div className="ml-auto font-medium">Sala de Pesas</div>
-      </div>
-      <div className="flex items-center">
-        <Avatar className="h-9 w-9">
-          <AvatarFallback>AG</AvatarFallback>
-        </Avatar>
-        <div className="ml-4 space-y-1">
-          <p className="text-sm font-medium leading-none">Ana García</p>
-          <p className="text-sm text-muted-foreground">Acceso: 09:00 AM</p>
-        </div>
-        <div className="ml-auto font-medium">Sala de Yoga</div>
-      </div>
+      {accesses.slice(0, 5).map((access) => {
+        const initials = access.name
+          .split(" ")
+          .map((n) => n[0])
+          .join("")
+          .slice(0, 2)
+          .toUpperCase()
+
+        const formattedEntrada = access.entrada
+          ? format(new Date(access.entrada), "hh:mm a")
+          : "—"
+
+        const formattedSalida = access.salida
+          ? format(new Date(access.salida), "hh:mm a")
+          : null
+
+        return (
+          <div key={access.id} className="flex items-center">
+            <Avatar className="h-9 w-9">
+              <AvatarFallback>{initials}</AvatarFallback>
+            </Avatar>
+            <div className="ml-4 space-y-1">
+              <p className="text-sm font-medium leading-none">{access.name}</p>
+              <p className="text-sm text-muted-foreground">
+                Acceso: {formattedEntrada}
+                {formattedSalida && ` · Salió: ${formattedSalida}`}
+              </p>
+            </div>
+            <div className="ml-auto font-medium">{access.plan || "Área General"}</div>
+          </div>
+        )
+      })}
     </div>
   )
 }
-

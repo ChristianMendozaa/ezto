@@ -118,7 +118,9 @@ services:
       - ./auth-service:/app
     env_file:
       - ./auth-service/.env  
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    command: uvicorn app.main:app --host 0.0.0.0 --port ${PORT_AUTH} --reload
+    ports:
+      - "${PORT_AUTH}:8000"
     environment:
       - ENV=development
     labels:
